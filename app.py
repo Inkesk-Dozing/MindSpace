@@ -1,3 +1,5 @@
+import logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 from flask import Flask, render_template, request, redirect, url_for, flash
 import pandas as pd
 import numpy as np
