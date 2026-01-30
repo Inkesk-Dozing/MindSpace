@@ -32,6 +32,7 @@ def index():
 
 @app.route('/upload', methods=['POST','GET'])
 def upload():
+    """Handle dataset upload endpoint."""
     global data_df
     if request.method=='POST':
         if 'file' not in request.files:
@@ -51,6 +52,7 @@ def upload():
     return redirect(url_for('index'))
 
 def process_data():
+    """Process CSV data and compute burnout scores."""
     plot_dir=os.path.join(app.static_folder,'plots')
     os.makedirs(plot_dir,exist_ok=True)
     global data_df
