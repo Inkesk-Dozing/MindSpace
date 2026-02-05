@@ -42,7 +42,7 @@ def upload():
             return redirect(url_for('index'))
         if file and file.filename.endswith('.csv'):
             try:
-                data_df = pd.read_csv(file)
+                data_df = pd.read_csv(file, on_bad_lines='skip')
             # Process data
                 process_data()
                 return redirect(url_for('dashboard'))
