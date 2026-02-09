@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MindSpace - Student Burnout Analytics</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="hero">
+            <h1>🧠 MindSpace Analytics</h1>
+            <p>Unlock insights into student mental health. Analyze burnout patterns, sentiment trends, and risk factors with our intuitive dashboard.</p>
+        </div>
+
+        <div class="upload-section">
+            <h2>📊 Get Started</h2>
+            <form action="/upload" method="post" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="file-upload">Choose Your CSV Dataset</label>
+                    <input type="file" id="file-upload" name="file" accept=".csv" required>
+                </div>
+                <button type="submit" class="btn-primary">🚀 Analyze Data</button>
+            </form>
+        </div>
+
+        <div class="info-card">
+            <h3>📋 Data Requirements</h3>
+            <p>Your CSV file must include these columns for accurate analysis:</p>
+            <div class="columns">
+                <div class="column">
+                    <h4>⏰ sleep_hours</h4>
+                    <p>Average nightly sleep hours</p>
+                </div>
+                <div class="column">
+                    <h4>📚 study_hours</h4>
+                    <p>Daily study hours</p>
+                </div>
+                <div class="column">
+                    <h4>😰 stress_level</h4>
+                    <p>Stress rating (1-10)</p>
+                </div>
+                <div class="column">
+                    <h4>💬 feedback</h4>
+                    <p>Text comments</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

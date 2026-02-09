@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MindSpace - Student Burnout Analytics</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>MindSpace Analytics</h1>
+        <p>Advanced student burnout analysis platform. Upload your dataset to gain insights into mental health trends and identify at-risk students.</p>
+
+        <form action="/upload" method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="file-upload">Select CSV Dataset</label>
+                <input type="file" id="file-upload" name="file" accept=".csv" required>
+            </div>
+            <button type="submit" class="btn-primary">Upload & Generate Analytics</button>
+        </form>
+
+        <div style="margin-top: 32px; padding: 24px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <h3 style="margin-top: 0; color: #374151;">Expected Data Format</h3>
+            <p style="margin-bottom: 16px; color: #64748b;">Your CSV file should contain the following columns:</p>
+            <ul style="color: #64748b; margin: 0;">
+                <li><strong>sleep_hours:</strong> Average hours of sleep per night</li>
+                <li><strong>study_hours:</strong> Average hours spent studying per day</li>
+                <li><strong>stress_level:</strong> Self-reported stress level (1-10)</li>
+                <li><strong>feedback:</strong> Text feedback or comments</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
