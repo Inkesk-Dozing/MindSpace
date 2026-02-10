@@ -131,7 +131,7 @@ def dashboard():
     plt.ylabel('Number of Students')
     plt.tight_layout()
     plt.savefig(os.path.join(plot_dir, 'score_hist.png'))
-    plt.close()
+    plt.close('all')
   
     
     # Pie chart of risk
@@ -154,7 +154,7 @@ def dashboard():
     plt.tight_layout()
 
     plt.savefig(os.path.join(plot_dir, 'risk_pie.png'))
-    plt.close()
+    plt.close('all')
     
 
     #ADDITIONAL GRAPH STRESS VS BURNOUT
@@ -173,7 +173,7 @@ def dashboard():
             plt.grid(True)
             plt.tight_layout()
             plt.savefig(os.path.join(plot_dir,"stress_vs_burnout.png"))
-            plt.close()
+            plt.close('all')
 
             
     # -------- CORRELATION HEATMAP --------
@@ -195,7 +195,7 @@ def dashboard():
 
         plt.tight_layout()
         plt.savefig(os.path.join(plot_dir, "correlation_heatmap.png"))
-        plt.close()
+        plt.close('all')
     
             
 
