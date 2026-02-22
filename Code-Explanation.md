@@ -83,20 +83,22 @@ Flask is the backbone of the application, handling routing, rendering, and data 
 
 NLTK handles sentiment analysis, a key feature for understanding qualitative feedback:
 
-- **Setup**: `nltk.download('vader_lexicon')` ensures the VADER sentiment model is available.
+- **Setup**: The application uses a "lazy download" approach for the VADER sentiment model. It checks if `vader_lexicon` is already available locally before attempting a download, which improves startup speed and prevents redundant network requests.
 - **Analysis Process**:
   - `SentimentIntensityAnalyzer()` initializes the analyzer.
   - In `process_data()`, `sia.polarity_scores(str(x))['compound']` analyzes each feedback text.
   - The compound score quantifies sentiment, integrated into the DataFrame for dashboard display.
 - **Integration**: Sentiment scores complement quantitative metrics like burnout scores, providing a holistic view of student well-being.
 
-## Other Key Code Components
+## Robustness Features
 
-- **Data Processing (`process_data`)**: Computes burnout scores using the formula `(study_hours / sleep_hours) * stress_level * 10`, clips to 0-100, categorizes risk, and applies sentiment analysis.
-- **Plot Generation**: Creates and saves visualizations in `/dashboard`, using Matplotlib to produce histograms and pie charts.
-- **Statistics Calculation**: Derives averages, counts, and data for charts in the dashboard.
-- **Editing Functionality**: Allows in-browser data modification, with changes saved back to the DataFrame and re-processed.
+The application includes several features to ensure it runs smoothly even with imperfect data:
+
+- **Division by Zero Protection**: In the `burnout_score` calculation, the app checks if `sleep_hours` is greater than 0. If it's 0, it defaults the score calculation to prevent a `ZeroDivisionError` crash.
+- **Data Type Conversion**: Values entered via the `/edit` route or uploaded via CSV are automatically converted to numeric types using `pd.to_numeric`. This prevents "flying errors" when strings are mixed with numbers during calculations.
+- **Missing Directory Handling**: The application automatically creates the `static/plots` directory if it doesn't exist, ensuring that Matplotlib can always save its generated visualizations.
+- **CSV Validation**: Basic error handling is in place to catch issues with malformed CSV files during upload.
 
 ## Conclusion
 
-This application demonstrates the integration of web development (Flask), data analysis (Pandas, NumPy), visualization (Matplotlib), and NLP (NLTK) to create a functional tool for burnout analysis. Flask enables the web interface, while NLTK adds depth through sentiment insights. For deployment, ensure all dependencies are installed via `pip install -r requirements.txt`, and run with `python app.py`.
+This application demonstrates the integration of web development (Flask), data analysis (Pandas, NumPy), visualization (Matplotlib), and NLP (NLTK) to create a functional tool for burnout analysis. Flask enables the web interface, while NLTK adds depth through sentiment insights. The recent updates focus on making the app more robust against common data errors and optimizing startup performance. The project also follows professional standards with a `CONTRIBUTING.md`, `LICENSE`, and `SECURITY.md` provided in the root. For deployment, ensure all dependencies are installed via `pip install -r requirements.txt`, and run with `python app.py`.
