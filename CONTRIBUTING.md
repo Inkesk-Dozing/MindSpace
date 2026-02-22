@@ -8,6 +8,7 @@ Thank you for your interest in contributing to MindSpace! 🎉 We're excited to 
 - [Development Workflow](#development-workflow)
 - [Coding Style Guidelines](#coding-style-guidelines)
 - [Testing](#testing)
+- [Security Policy](#security-policy)
 - [Code of Conduct](#code-of-conduct)
 - [Questions?](#questions)
 
@@ -150,30 +151,13 @@ Quality is important to us! Before submitting your PR:
 - Ensure tests are repeatable and don't depend on external state
 - Mock external dependencies when appropriate
 
+## Security Policy
+
+For information on how to report security vulnerabilities, please see our [Security Policy](SECURITY.md).
+
 ## Code of Conduct
 
-### Our Commitment
-
-We're committed to providing a welcoming, friendly, and respectful environment for everyone on our team. We want MindSpace to be a project where everyone feels comfortable contributing and collaborating.
-
-### Expected Behavior
-
-- **Be respectful**: Treat everyone with respect and consideration
-- **Be collaborative**: Share knowledge and help each other grow
-- **Be constructive**: Provide helpful feedback and accept it gracefully
-- **Be professional**: Keep discussions focused and productive
-- **Be inclusive**: Welcome diverse perspectives and experiences
-
-### Unacceptable Behavior
-
-- Harassment, discrimination, or disrespectful comments
-- Personal attacks or inflammatory remarks
-- Publishing others' private information without permission
-- Any behavior that would be inappropriate in a professional setting
-
-### Reporting
-
-If you experience or witness unacceptable behavior, please report it to the project maintainers. All reports will be handled with discretion and confidentiality.
+We are committed to providing a welcoming, friendly, and respectful environment for everyone. Please read our [Code of Conduct](CODE_OF_CONDUCT.md) for details on our expectations and enforcement.
 
 ## Questions?
 

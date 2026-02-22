@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, flash
 import pandas as pd
 import numpy as np
 import matplotlib
@@ -9,7 +9,11 @@ import json
 from nltk.sentiment import SentimentIntensityAnalyzer
 import nltk
 
-nltk.download('vader_lexicon')
+# Ensure NLTK data is downloaded once
+try:
+    nltk.data.find('sentiment/vader_lexicon.zip')
+except LookupError:
+    nltk.download('vader_lexicon')
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret'
@@ -30,48 +34,73 @@ def upload():
     if file.filename == '':
         return redirect(request.url)
     if file and file.filename.endswith('.csv'):
-        data_df = pd.read_csv(file)
-        # Process data
-        process_data()
-        return redirect(url_for('dashboard'))
+        try:
+            data_df = pd.read_csv(file)
+            # Process data
+            process_data()
+            return redirect(url_for('dashboard'))
+        except Exception as e:
+            print(f"Error reading CSV: {e}")
+            return redirect(request.url)
     return redirect(request.url)
 
 def process_data():
     global data_df
     if data_df is None:
         return
+    
+    # Ensure numeric columns are actually numeric
+    numeric_cols = ['sleep_hours', 'study_hours', 'stress_level']
+    for col in numeric_cols:
+        if col in data_df.columns:
+            data_df[col] = pd.to_numeric(data_df[col], errors='coerce').fillna(0)
+
     # Assume columns: sleep_hours, study_hours, stress_level (1-10), feedback
     # Compute Burnout Score: (study_hours / sleep_hours) * stress_level, normalize to 0-100
-    data_df['burnout_score'] = ((data_df['study_hours'] / data_df['sleep_hours']) * data_df['stress_level']) * 10
+    # Guard against division by zero
+    data_df['burnout_score'] = data_df.apply(
+        lambda row: ((row['study_hours'] / row['sleep_hours'] if row['sleep_hours'] > 0 else 0) * row['stress_level']) * 10,
+        axis=1
+    )
     data_df['burnout_score'] = np.clip(data_df['burnout_score'], 0, 100)
+    
     # Risk classification
-    data_df['risk'] = pd.cut(data_df['burnout_score'], bins=[0, 33, 66, 100], labels=['Low', 'Medium', 'High'])
+    data_df['risk'] = pd.cut(data_df['burnout_score'], bins=[-1, 33, 66, 101], labels=['Low', 'Medium', 'High'])
+    
     # Sentiment analysis
     sia = SentimentIntensityAnalyzer()
-    data_df['sentiment_score'] = data_df['feedback'].apply(lambda x: sia.polarity_scores(str(x))['compound'])
+    if 'feedback' in data_df.columns:
+        data_df['sentiment_score'] = data_df['feedback'].apply(lambda x: sia.polarity_scores(str(x))['compound'])
+    else:
+        data_df['sentiment_score'] = 0
 
 @app.route('/dashboard')
 def dashboard():
     global data_df
     if data_df is None:
         return redirect(url_for('index'))
+    
     # Generate plots
-    os.makedirs('static/plots', exist_ok=True)
+    plot_dir = 'static/plots'
+    os.makedirs(plot_dir, exist_ok=True)
+    
     # Histogram of burnout scores
     plt.figure()
     data_df['burnout_score'].hist(bins=20)
     plt.title('Burnout Score Distribution')
     plt.xlabel('Burnout Score')
     plt.ylabel('Frequency')
-    plt.savefig('static/plots/score_hist.png')
+    plt.savefig(os.path.join(plot_dir, 'score_hist.png'))
     plt.close()
+    
     # Pie chart of risk
     risk_counts = data_df['risk'].value_counts()
     plt.figure()
-    risk_counts.plot.pie(autopct='%1.1f%%')
+    if not risk_counts.empty:
+        risk_counts.plot.pie(autopct='%1.1f%%')
     plt.title('Risk Categories')
     plt.ylabel('')
-    plt.savefig('static/plots/risk_pie.png')
+    plt.savefig(os.path.join(plot_dir, 'risk_pie.png'))
     plt.close()
     
     # Compute stats
@@ -102,8 +131,9 @@ def edit():
         # Update data
         for i in range(len(data_df)):
             for col in data_df.columns:
-                if col in request.form and f'{col}_{i}' in request.form:
-                    data_df.at[i, col] = request.form[f'{col}_{i}']
+                form_key = f'{col}_{i}'
+                if form_key in request.form:
+                    data_df.at[i, col] = request.form[form_key]
         process_data()  # Recompute after edit
         return redirect(url_for('dashboard'))
     return render_template('edit.html', data=data_df.to_dict('records'), columns=data_df.columns.tolist())
