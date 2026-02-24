@@ -1,73 +1,276 @@
 # 🧠 MindSpace: Student Burnout Analytics
 
+<p align="center">
+  <img src="https://img.shields.io/badge/Made%20with-Python-blue.svg" alt="Made with Python">
+  <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT">
+  <img src="https://img.shields.io/badge/Version-1.0.0-orange.svg" alt="Version">
+</p>
+
 MindSpace is a comprehensive data analytics platform designed to help educators and students understand mental health patterns, burnout risks, and sentiment trends. By analyzing study habits, sleep patterns, and subjective feedback, MindSpace provides actionable insights via an intuitive web dashboard.
+
+## 📋 Table of Contents
+
+- [🚀 Features](#-features)
+- [🛠️ Tech Stack](#️-tech-stack)
+- [📦 Installation](#-installation)
+- [⚡ Quick Start](#-quick-start)
+- [📊 Data Requirements](#-data-requirements)
+- [💡 Usage](#-usage)
+- [📁 Project Structure](#-project-structure)
+- [🔮 Future Enhancements](#-future-enhancements)
+- [🤝 Contributing](#-contributing)
+- [🛡️ Security](#-security)
+- [📄 License](#-license)
+- [📧 Contact](#-contact)
 
 ## 🚀 Features
 
-- **Data-Driven Insights:** Automatically calculates a "Burnout Score" based on study-to-sleep ratios and stress levels.
-- **Sentiment Analysis:** Utilizes Natural Language Processing (VADER Sentiment) to analyze text feedback and gauge student sentiment.
-- **Risk Classification:** Categories students into 'Low', 'Medium', and 'High' risk tiers for proactive intervention.
-- **Interactive Dashboard:** Visualizes data through distribution histograms and risk category pie charts.
-- **Dynamic Dataset Management:** Upload CSV files and edit data directly through the web interface with real-time recalculations.
+MindSpace offers a comprehensive suite of features for student burnout analysis:
+
+- **📈 Data-Driven Insights**: Automatically calculates a "Burnout Score" based on study-to-sleep ratios and stress levels using a weighted algorithm that normalizes results to a 0-100 scale.
+
+- **💬 Sentiment Analysis**: Utilizes Natural Language Processing (NLTK VADER Sentiment Analyzer) to analyze text feedback and gauge student sentiment, providing compound scores ranging from -1 (very negative) to +1 (very positive).
+
+- **⚠️ Risk Classification**: Categorizes students into 'Low', 'Medium', and 'High' risk tiers for proactive intervention:
+  - **Low Risk**: Burnout score ≤ 33
+  - **Medium Risk**: Burnout score 34-66
+  - **High Risk**: Burnout score > 66
+
+- **📊 Interactive Dashboard**: Visualizes data through:
+  - Distribution histograms showing burnout score frequency
+  - Risk category pie charts with percentage breakdown
+  - Key statistics (average burnout, high-risk count, total records)
+
+- **✏️ Dynamic Dataset Management**: 
+  - Upload custom CSV files with real-time processing
+  - Edit data directly through the web interface
+  - Automatic recalculation of all metrics upon data changes
+
+- **🔒 Robust Error Handling**: 
+  - Division by zero protection in burnout calculations
+  - Automatic data type conversion for numeric fields
+  - Missing directory creation for visualizations
 
 ## 🛠️ Tech Stack
 
-- **Backend:** Python, Flask
-- **Data Processing:** Pandas, NumPy
-- **NLP:** NLTK (SentimentIntensityAnalyzer)
-- **Visualization:** Matplotlib
-- **Frontend:** HTML5, CSS3 (Vanilla)
+| Layer | Technology |
+|-------|------------|
+| **Backend** | Python, Flask |
+| **Data Processing** | Pandas, NumPy |
+| **NLP** | NLTK (VADER Sentiment Analyzer) |
+| **Visualization** | Matplotlib |
+| **Frontend** | HTML5, CSS3 (Vanilla) |
 
 ## 📦 Installation
 
-1.  **Clone the repository:**
-    ```bash
-    git clone <repository-url>
-    cd MindSpace
-    ```
+### Prerequisites
 
-2.  **Install dependencies:**
-    It is recommended to use a virtual environment.
-    ```bash
-    pip install -r requirements.txt
-    ```
+- Python 3.7 or higher
+- pip (Python package installer)
 
-3.  **Run the application:**
-    ```bash
-    python app.py
-    ```
+### Step 1: Clone the Repository
 
-4.  **Access the dashboard:**
-    Open your browser and navigate to `http://127.0.0.1:5000`.
+```
+bash
+git clone <repository-url>
+cd MindSpace
+```
+
+### Step 2: Create a Virtual Environment (Recommended)
+
+```
+bash
+# On Windows
+python -m venv venv
+venv\Scripts\activate
+
+# On macOS/Linux
+python3 -m venv venv
+source venv/bin/activate
+```
+
+### Step 3: Install Dependencies
+
+```
+bash
+pip install -r requirements.txt
+```
+
+This will install the following packages:
+- Flask - Web framework
+- pandas - Data manipulation
+- nltk - Natural language processing
+- matplotlib - Data visualization
+- numpy - Numerical computing
+
+### Step 4: Download NLTK Data
+
+The application automatically downloads the VADER lexicon on first run. If you encounter issues, you can manually download it:
+
+```
+python
+import nltk
+nltk.download('vader_lexicon')
+```
+
+## ⚡ Quick Start
+
+1. **Run the application:**
+   
+```
+bash
+   python app.py
+   
+```
+
+2. **Access the dashboard:**
+   Open your browser and navigate to `http://127.0.0.1:5000`
+
+3. **Upload your data:**
+   - Prepare a CSV file with the required columns (see Data Requirements)
+   - Use the web interface to upload the file
+   - View the generated analytics on the dashboard
+
+4. **Edit data (optional):**
+   - Navigate to the Edit page
+   - Modify any values directly
+   - All calculations update automatically
 
 ## 📊 Data Requirements
 
 The application expects a CSV file with the following columns:
 
-| Column Name | Description | Example Value |
+| Column Name | Type | Description | Example Value |
+| :--- | :--- | :--- | :--- |
+| `sleep_hours` | Float | Average nightly sleep hours | `7.5` |
+| `study_hours` | Float | Daily study hours | `5` |
+| `stress_level` | Integer | Stress rating on a scale of 1-10 | `6` |
+| `feedback` | String | Qualitative text comments | `Feeling a bit overwhelmed.` |
+
+### Sample Data Format
+
+```
+csv
+sleep_hours,study_hours,stress_level,feedback
+8,4,7,"I feel overwhelmed with assignments"
+6,6,9,"Too much pressure, can't sleep"
+9,3,4,"Managing okay, but tired"
+7,5,8,"Burning out, need help"
+10,2,3,"Feeling good, balanced"
+5,7,10,"Exhausted, high stress"
+```
+
+### Sample Data Files
+
+The repository includes sample datasets for testing:
+- `data/sample_data.csv` - Example dataset with 6 records
+- `data/test_data.csv` - Additional test data
+
+## 💡 Usage
+
+### Workflow
+
+1. **Landing Page**: Start at the index page where you can upload a CSV file
+2. **Data Upload**: Select and upload your CSV file containing student data
+3. **Dashboard**: View the analytics dashboard with:
+   - Burnout score distribution histogram
+   - Risk category pie chart
+   - Summary statistics (average burnout, high-risk count)
+   - Individual student records with calculated metrics
+4. **Edit Data**: Make changes to existing records and see real-time updates
+
+### Burnout Score Calculation
+
+The burnout score is calculated using the formula:
+
+```
+Burnout Score = (study_hours / sleep_hours) * stress_level * 10
+```
+
+- Clamped to a range of 0-100
+- Higher scores indicate greater burnout risk
+- Division by zero is handled gracefully (defaults to 0)
+
+### Risk Classification
+
+| Risk Level | Score Range | Action Recommended |
 | :--- | :--- | :--- |
-| `sleep_hours` | Average nightly sleep hours | `7` |
-| `study_hours` | Daily study hours | `5` |
-| `stress_level` | Stress rating on a scale of 1-10 | `6` |
-| `feedback` | Qualitative text comments | `Feeling a bit overwhelmed.` |
+| 🟢 Low | 0-33 | Monitor periodically |
+| 🟡 Medium | 34-66 | Consider intervention |
+| 🔴 High | 67-100 | Immediate attention required |
 
 ## 📁 Project Structure
 
-```text
+```
 MindSpace/
-├── app.py              # Flask application & processing logic
-├── requirements.txt    # Project dependencies
-├── templates/          # HTML templates (index, dashboard, edit)
-├── static/             # CSS styles and generated plots
-│   └── styles.css      # Core styles
-├── data/               # Sample and test datasets
-│   ├── sample_data.csv
-│   └── test_data.csv
-├── README.md           # Project documentation
-├── SECURITY.md         # Security policy
-└── CODE_OF_CONDUCT.md  # Community standards
+├── app.py                          # Flask application & processing logic
+├── requirements.txt                # Project dependencies
+├── README.md                       # Project documentation
+├── LICENSE                         # MIT License
+├── SECURITY.md                     # Security policy
+├── CODE_OF_CONDUCT.md              # Community standards
+├── CONTRIBUTING.md                 # Contribution guidelines
+├── Code-Explanation.md             # Detailed code documentation
+├── data/                           # Dataset files
+│   ├── sample_data.csv             # Sample dataset
+│   └── test_data.csv               # Test dataset
+├── documents/                      # Project documentation
+│   ├── synopsis.md                 # Project synopsis
+│   ├── Workload-Distribution.md    # Work distribution
+│   ├── Research-Paper/             # Research paper drafts
+│   └── *.docx/*.pptx/*.pdf         # Supporting documents
+├── templates/                      # HTML templates
+│   ├── index.html                  # Upload page
+│   ├── dashboard.html              # Analytics dashboard
+│   └── edit.html                   # Data editor
+└── static/                         # Static assets
+    ├── styles.css                  # Core styles
+    └── plots/                      # Generated visualizations
+        ├── score_hist.png          # Burnout score histogram
+        └── risk_pie.png            # Risk category pie chart
 ```
 
-## 🛡️ License
+## 🔮 Future Enhancements
+
+We have exciting plans for MindSpace's future:
+
+- [ ] **User Authentication**: Add login functionality for personalized dashboards
+- [ ] **Export Options**: Export analyzed data to PDF/Excel reports
+- [ ] **API Development**: RESTful API for programmatic access
+- [ ] **Real-time Analytics**: Live data streaming and processing
+- [ ] **Enhanced Visualizations**: Interactive charts with drill-down capabilities
+- [ ] **Database Integration**: Support for SQL databases (PostgreSQL, MySQL)
+- [ ] **Multi-language Support**: Localization for international users
+- [ ] **Mobile Responsive Design**: Improved mobile experience
+- [ ] **Email Notifications**: Automated alerts for high-risk students
+
+## 🤝 Contributing
+
+Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) for details on:
+
+- Reporting bugs and suggesting features
+- Development workflow
+- Coding style guidelines
+- Testing procedures
+
+## 🛡️ Security
+
+For information on how to report security vulnerabilities, please see our [Security Policy](SECURITY.md).
+
+## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 📧 Contact
+
+For questions, suggestions, or collaborations, please reach out:
+
+- **Project Lead**: Brijesh Kumar
+- **Email**: [Contact Email]
+- **GitHub Issues**: [Repository Issues Page]
+
+---
+
+<p align="center">
+  Made with ❤️ for student well-being
+</p>
