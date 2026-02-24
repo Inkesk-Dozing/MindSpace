@@ -341,9 +341,9 @@ You may obtain a copy of the License at
 
 For questions, suggestions, or collaborations, please reach out:
 
-- **Project Lead**: Brijesh Kumar
-- **Email**: [Contact Email]
-- **GitHub Issues**: [Repository Issues Page]
+- **Project Lead**: @eOzkull/council
+- **Email**: <inkeskdozing@gmail.com>
+- **GitHub Issues**: [issues](https://github.com/Inkesk-Dozing/MindSpace/issues)
 
 ---
 
