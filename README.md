@@ -341,7 +341,7 @@ You may obtain a copy of the License at
 
 For questions, suggestions, or collaborations, please reach out:
 
-- **Project Lead**: @eOzkull/council
+- **Project Lead**: [@eOzkull/council](https://github.com/orgs/eOzkull/teams/council)
 - **Email**: <inkeskdozing@gmail.com>
 - **GitHub Issues**: [issues](https://github.com/Inkesk-Dozing/MindSpace/issues)
 
