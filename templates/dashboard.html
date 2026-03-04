@@ -62,6 +62,14 @@
                     <h3>Risk Categories</h3>
                     <img src="{{ url_for('static', filename='plots/risk_pie.png') }}" alt="Risk Categories Pie Chart">
                 </div>
+                <div class="chart-container">
+                    <h3>Average Burnout vs Stress Level</h3>
+                    <img src="{{ url_for('static', filename='plots/stress_vs_burnout.png') }}?v={{ total_records }}" alt="Stress vs Burnout">
+                </div>
+                <div class="chart-container">
+                    <h3>Sleep vs Burnout</h3>
+                    <img src="{{ url_for('static', filename='plots/sleep_vs_burnout.png') }}" alt="Sleep vs Burnout">
+                </div>
             </div>
         </div>
     </div>
