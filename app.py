@@ -133,7 +133,13 @@ def edit():
             for col in data_df.columns:
                 form_key = f'{col}_{i}'
                 if form_key in request.form:
-                    data_df.at[i, col] = request.form[form_key]
+                    value = request.form[form_key]
+                    if pd.api.types.is_numeric_dtype(data_df[col]):
+                        try:
+                            value=float(value)
+                        except:
+                            value=0
+                    data_df.at[i,col]=value
         process_data()  # Recompute after edit
         return redirect(url_for('dashboard'))
     return render_template('edit.html', data=data_df.to_dict('records'), columns=data_df.columns.tolist())
