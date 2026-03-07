@@ -4,3 +4,4 @@ nltk
 matplotlib
 numpy
 seaborn
+python-dotenv==1.0.0
