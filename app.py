@@ -47,6 +47,7 @@ def upload():
                 process_data()
                 return redirect(url_for('dashboard'))
             except Exception as e:
+                logging.error('Upload failed')
                 print(f"Error reading CSV: {e}")
                 return redirect(url_for('index'))
     return redirect(url_for('index'))
