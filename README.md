@@ -150,6 +150,8 @@ The application expects a CSV file with the following columns:
 
 | Column Name | Type | Description | Example Value |
 | :--- | :--- | :--- | :--- |
+| `student_id` (optional) | String | Unique student identifier | `S001` |
+| `student_name` (optional) | String | Student full name | `Aanya Sharma` |
 | `sleep_hours` | Float | Average nightly sleep hours | `7.5` |
 | `study_hours` | Float | Daily study hours | `5` |
 | `stress_level` | Integer | Stress rating on a scale of 1-10 | `6` |
