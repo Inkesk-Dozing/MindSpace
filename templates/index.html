@@ -1,20 +1,66 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MindSpace - Student Burnout Analytics</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script>
+        /* Apply saved theme immediately — prevents flash of wrong theme */
+        (function () {
+            const saved = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', saved);
+        })();
+    </script>
 </head>
+
 <body>
+    <nav class="navbar">
+        <span class="navbar-brand">🧠 MindSpace</span>
+        <button id="theme-toggle" class="theme-btn" aria-label="Toggle dark mode">🌙</button>
+    </nav>
+
     <div class="container">
         <section class="hero">
             <h1>🧠 MindSpace Analytics</h1>
-            <p>Unlock insights into student mental health. Analyze burnout patterns, sentiment trends, and risk factors with our intuitive dashboard.</p>
+            <p>Unlock insights into student mental health. Analyze burnout patterns, sentiment trends, and risk factors
+                with our intuitive dashboard.</p>
         </section>
 
+        <!-- ===== SESSION HISTORY CARD ===== -->
+        {% if history %}
+        <section class="history-card">
+            <div class="history-header">
+                <h3>📂 Recent Sessions</h3>
+                <a href="{{ url_for('reset') }}" class="btn-danger-sm" title="Clear all sessions">🗑️ Clear All</a>
+            </div>
+            <div class="history-list">
+                {% for entry in history %}
+                <div class="history-item">
+                    <div class="history-item-info">
+                        <span class="history-filename">📄 {{ entry.filename }}</span>
+                        <span class="history-meta">{{ entry.records }} records &nbsp;·&nbsp; {{ entry.timestamp
+                            }}</span>
+                    </div>
+                    <div class="history-item-actions">
+                        {% if loop.index0 == 0 %}
+                        <a href="{{ url_for('dashboard') }}" class="btn-primary btn-sm">📊 Continue</a>
+                        {% else %}
+                        <span class="history-stale">Session Log</span>
+                        {% endif %}
+                        <a href="{{ url_for('delete_session', idx=loop.index0) }}" class="btn-delete"
+                            title="Remove this session">✕</a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- ===== UPLOAD SECTION ===== -->
         <section class="upload-section">
-            <h2>📊 Get Started</h2>
+            <h2>📊 {% if history %}Upload New Dataset{% else %}Get Started{% endif %}</h2>
             <form action="/upload" method="post" enctype="multipart/form-data">
                 <div class="form-group">
                     <label for="file-upload">Choose Your CSV Dataset</label>
@@ -24,6 +70,7 @@
             </form>
         </section>
 
+        <!-- ===== DATA REQUIREMENTS ===== -->
         <section class="info-card">
             <h3>📋 Data Requirements</h3>
             <p>Your CSV file must include these columns for accurate analysis:</p>
@@ -38,7 +85,7 @@
                 </div>
                 <div class="column">
                     <h4>😰 stress_level</h4>
-                    <p>Stress rating (1-10)</p>
+                    <p>Stress rating (1–10)</p>
                 </div>
                 <div class="column">
                     <h4>💬 feedback</h4>
@@ -47,5 +94,22 @@
             </div>
         </section>
     </div>
+
+    <script>
+        /* Dark mode toggle — null-safe */
+        const toggle = document.getElementById('theme-toggle');
+        if (toggle) {
+            const saved = localStorage.getItem('theme') || 'light';
+            toggle.textContent = saved === 'dark' ? '☀️' : '🌙';
+            toggle.addEventListener('click', () => {
+                const current = document.documentElement.getAttribute('data-theme');
+                const next = current === 'dark' ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', next);
+                localStorage.setItem('theme', next);
+                toggle.textContent = next === 'dark' ? '☀️' : '🌙';
+            });
+        }
+    </script>
 </body>
+
 </html>
