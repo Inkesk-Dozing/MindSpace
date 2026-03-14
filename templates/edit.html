@@ -1,33 +1,68 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
+
 <head>
     <meta charset="UTF-8">
     <title>MindSpace - Edit Data</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script>
+        (function () {
+            const saved = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', saved);
+        })();
+    </script>
 </head>
+
 <body>
-    <h1>Edit Data</h1>
-    <a href="{{ url_for('dashboard') }}">Back to Dashboard</a>
-    <form method="post">
-        <table>
-            <thead>
-                <tr>
-                    {% for col in columns %}
-                    <th>{{ col }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for i in range(data|length) %}
-                <tr>
-                    {% for col in columns %}
-                    <td><input type="text" name="{{ col }}_{{ i }}" value="{{ data[i][col] }}"></td>
-                    {% endfor %}
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        <button type="submit">Save Changes</button>
-    </form>
+    <nav class="navbar">
+        <span class="navbar-brand">🧠 MindSpace</span>
+        <div class="navbar-links">
+            <a href="{{ url_for('dashboard') }}" class="nav-link">📈 Dashboard</a>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle dark mode">🌙</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>✏️ Edit Data</h1>
+        <form method="post">
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            {% for col in columns %}
+                            <th>{{ col }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for i in range(data|length) %}
+                        <tr>
+                            {% for col in columns %}
+                            <td><input type="text" name="{{ col }}_{{ i }}" value="{{ data[i][col] }}"></td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <button type="submit" class="btn-primary">💾 Save Changes</button>
+        </form>
+    </div>
+
+    <script>
+        const toggle = document.getElementById('theme-toggle');
+        if (toggle) {
+            const saved = localStorage.getItem('theme') || 'light';
+            toggle.textContent = saved === 'dark' ? '☀️' : '🌙';
+            toggle.addEventListener('click', () => {
+                const current = document.documentElement.getAttribute('data-theme');
+                const next = current === 'dark' ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', next);
+                localStorage.setItem('theme', next);
+                toggle.textContent = next === 'dark' ? '☀️' : '🌙';
+            });
+        }
+    </script>
 </body>
+
 </html>
