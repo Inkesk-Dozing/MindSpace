@@ -4,10 +4,13 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+#Use a clean style for plots
+plt.style.use('ggplot')
 import os
 import json
 from nltk.sentiment import SentimentIntensityAnalyzer
 import nltk
+import seaborn as sns
 
 # Ensure NLTK data is downloaded once
 try:
@@ -92,7 +95,9 @@ def process_data():
     else:
         data_df['sentiment_score'] = 0
     
-    #CORRELATION ANALYSIS
+    # Correlation analysis checks how strongly variables are related
+    # Example: Does less sleep correlate with higher burnout?
+    # It calculates correlation values between numeric features
 
     numericc_cols = ['sleep_hours', 'study_hours', 'stress_level','burnout_score']
     available_cols=[col for col in numericc_cols if col in data_df.columns]
@@ -108,50 +113,87 @@ def dashboard():
         return redirect(url_for('index'))
     
     # Generate plots
-    plot_dir = 'static/plots'
+    plot_dir = os.path.join(app.static_folder, 'plots')
     os.makedirs(plot_dir, exist_ok=True)
     
     # Histogram of burnout scores
-    plt.figure()
-    data_df['burnout_score'].hist(bins=20)
-    plt.title('Burnout Score Distribution')
+    # Histogram to see how burnout scores are distributed among students
+    #This helps identify whether most students are low, medium, or highly burned out
+
+    plt.figure(figsize=(8,5))
+    plt.hist(data_df['burnout_score'], bins=20, color='steelblue', edgecolor='black')
+    plt.title('Burnout Score Distribution', fontsize=14)
     plt.xlabel('Burnout Score')
-    plt.ylabel('Frequency')
+    plt.ylabel('Number of Students')
+    plt.tight_layout()
     plt.savefig(os.path.join(plot_dir, 'score_hist.png'))
     plt.close()
+  
     
     # Pie chart of risk
+    # Pie chart showing percentage of students in each burnout risk category
+    # Pie chart showing burnout risk distribution
     risk_counts = data_df['risk'].value_counts()
-    plt.figure()
+
+    plt.figure(figsize=(4,4))   # smaller figure
+
     if not risk_counts.empty:
-        risk_counts.plot.pie(autopct='%1.1f%%')
-    plt.title('Risk Categories')
+        risk_counts.plot.pie(
+            autopct='%1.1f%%',
+            colors=["#e28e0f", "#B80E0E","#2323D0"],  # reddish, brown, blue
+            startangle=90,
+            textprops={'fontsize':10}
+        )
+
+    plt.title('Burnout Risk Distribution', fontsize=12)
     plt.ylabel('')
+    plt.tight_layout()
+
     plt.savefig(os.path.join(plot_dir, 'risk_pie.png'))
     plt.close()
+    
 
     #ADDITIONAL GRAPH STRESS VS BURNOUT
     if 'stress_level' in data_df.columns and 'burnout_score' in data_df.columns:
         grouped=data_df.groupby('stress_level')['burnout_score'].mean()
         if not grouped.empty:
-            plt.figure()
-            grouped.plot(marker='o')
-            plt.title('Average Burnout vs Stress Level')
+        
+            # Line graph showing how average burnout changes with stress level
+            # This helps analyze whether higher stress leads to higher burnout
+            plt.figure(figsize=(8,5))
+            grouped.plot(marker='o', linewidth=2)
+            plt.title('Average Burnout vs Stress Level', fontsize=14)
             plt.xlabel("Stress Level")
-            plt.ylabel("Average Burnout")
+            plt.ylabel("Average Burnout Score")
+
+            plt.grid(True)
+            plt.tight_layout()
             plt.savefig(os.path.join(plot_dir,"stress_vs_burnout.png"))
             plt.close()
-    #ADDITIONAL GRAPH SLEEP VS BURNOUT
-    if 'sleep_hours' in data_df.columns and 'burnout_score' in data_df.columns:
-            plt.figure()
-            plt.scatter(data_df['sleep_hours'],data_df["burnout_score"])
 
-            plt.title('Sleep Hours vs Burnout Score')
-            plt.xlabel("Sleep Hours")
-            plt.ylabel("Burnout Score")
-            plt.tight_layout()
-            plt.savefig(os.path.join(plot_dir,"sleep_vs_burnout.png"))
-            plt.close()
+            
+    # -------- CORRELATION HEATMAP --------
+    # Heatmap visually shows relationships between numeric features
+    # It helps identify which variables influence burnout the most
+
+    if corr_matrix is not None:
+
+        plt.figure(figsize=(8,6))
+
+        sns.heatmap(
+            corr_matrix,
+            annot=True,        # show correlation numbers inside cells
+            cmap='coolwarm',   # red-blue color scale
+            fmt=".2f",
+            linewidths=0.5
+        )
+        plt.title("Feature Correlation Heatmap")
+
+        plt.tight_layout()
+        plt.savefig(os.path.join(plot_dir, "correlation_heatmap.png"))
+        plt.close()
+    
+            
 
 
     # Compute stats
