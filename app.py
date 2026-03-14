@@ -197,17 +197,68 @@ def dashboard():
         plt.tight_layout()
         plt.savefig(os.path.join(plot_dir, "correlation_heatmap.png"))
         plt.close('all')
-    
-            
 
+    # -------- SCATTER: SLEEP VS BURNOUT --------
+    if 'sleep_hours' in data_df.columns and 'burnout_score' in data_df.columns:
+        plt.figure(figsize=(8, 5))
+        colors = {'Low': '#2323D0', 'Medium': '#e28e0f', 'High': '#B80E0E'}
+        for risk_level, group in data_df.groupby('risk', observed=True):
+            plt.scatter(group['sleep_hours'], group['burnout_score'],
+                        label=str(risk_level), alpha=0.7,
+                        color=colors.get(str(risk_level), 'gray'), s=40)
+        plt.title('Sleep Hours vs Burnout Score', fontsize=14)
+        plt.xlabel('Sleep Hours')
+        plt.ylabel('Burnout Score')
+        plt.legend(title='Risk Level')
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(os.path.join(plot_dir, 'sleep_vs_burnout.png'))
+        plt.close('all')
+
+    # -------- BOX PLOT: BURNOUT BY RISK TIER --------
+    if 'risk' in data_df.columns and 'burnout_score' in data_df.columns:
+        fig, ax = plt.subplots(figsize=(8, 5))
+        risk_order = ['Low', 'Medium', 'High']
+        box_data = [data_df[data_df['risk'] == r]['burnout_score'].dropna().tolist()
+                    for r in risk_order if r in data_df['risk'].values]
+        box_labels = [r for r in risk_order if r in data_df['risk'].values]
+        bp = ax.boxplot(box_data, labels=box_labels, patch_artist=True)
+        box_colors = ['#2323D0', '#e28e0f', '#B80E0E']
+        for patch, color in zip(bp['boxes'], box_colors):
+            patch.set_facecolor(color)
+            patch.set_alpha(0.6)
+        ax.set_title('Burnout Score Distribution by Risk Tier', fontsize=14)
+        ax.set_xlabel('Risk Category')
+        ax.set_ylabel('Burnout Score')
+        ax.grid(True, axis='y', alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(os.path.join(plot_dir, 'burnout_boxplot.png'))
+        plt.close('all')
+
+    # -------- SENTIMENT HISTOGRAM --------
+    if 'sentiment_score' in data_df.columns:
+        plt.figure(figsize=(8, 5))
+        plt.hist(data_df['sentiment_score'], bins=20,
+                 color='#6366f1', edgecolor='white', alpha=0.85)
+        plt.axvline(0, color='red', linestyle='--', linewidth=1.5, label='Neutral')
+        plt.title('Sentiment Score Distribution', fontsize=14)
+        plt.xlabel('Sentiment Score (−1 Negative → +1 Positive)')
+        plt.ylabel('Number of Students')
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig(os.path.join(plot_dir, 'sentiment_dist.png'))
+        plt.close('all')
 
     # Compute stats
     avg_burnout = round(data_df['burnout_score'].mean(), 1)
-    #ADDING MORE FOR SKEWED DATASET
+    # Calculate key metrics for dashboard
     median_burnout=round(data_df['burnout_score'].median(),1)
     std_burnout=round(data_df['burnout_score'].std(),1)
     total_records = len(data_df)
     high_risk_count = (data_df['risk'] == 'High').sum()
+    pct_high_risk = round(high_risk_count / total_records * 100, 1) if total_records else 0
+    avg_sentiment = round(data_df['sentiment_score'].mean(), 2) if 'sentiment_score' in data_df.columns else 'N/A'
+
     
     # Prepare data for charts
     burnout_scores = data_df['burnout_score'].tolist()
@@ -222,11 +273,14 @@ def dashboard():
                            std_burnout=std_burnout,
                            total_records=total_records,
                            high_risk_count=high_risk_count,
+                           pct_high_risk=pct_high_risk,
+                           avg_sentiment=avg_sentiment,
                            burnout_scores=burnout_scores,
                            risk_data=risk_data,
                            corr_matrix=corr_matrix,
                            burnout_by_stress=burnout_by_stress
                            )
+
 
 @app.route('/edit', methods=['GET', 'POST'])
 def edit():

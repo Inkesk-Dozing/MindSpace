@@ -1,34 +1,71 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
+
 <head>
     <meta charset="UTF-8">
     <title>MindSpace - Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script>
+        (function () {
+            const saved = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', saved);
+        })();
+    </script>
 </head>
+
 <body>
+    <nav class="navbar">
+        <span class="navbar-brand">🧠 MindSpace</span>
+        <div class="navbar-links">
+            <a href="{{ url_for('index') }}" class="nav-link">🏠 Home</a>
+            <a href="{{ url_for('edit') }}" class="nav-link">✏️ Edit Dataset</a>
+            <a href="#charts" class="nav-link jump-link">📈 Jump to Charts</a>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle dark mode">🌙</button>
+        </div>
+    </nav>
+
     <div class="container">
         <div class="dashboard-header">
             <h1>📈 MindSpace Analytics Dashboard</h1>
-            <a href="{{ url_for('edit') }}" class="nav-link">✏️ Edit Dataset</a>
         </div>
 
+        <!-- Quick-jump floating button for large datasets -->
+        <a href="#charts" class="fab-jump" title="Jump to Visual Insights">📊</a>
+
+        <!-- Stats Row -->
         <div class="stats">
             <div class="stat-card">
-                <h3>📊 Average Burnout Score</h3>
+                <h3>📊 Avg Burnout</h3>
                 <p>{{ avg_burnout }}</p>
+            </div>
+            <div class="stat-card">
+                <h3>📊 Median Burnout</h3>
+                <p>{{ median_burnout }}</p>
+            </div>
+            <div class="stat-card">
+                <h3>📊 Std Deviation</h3>
+                <p>{{ std_burnout }}</p>
             </div>
             <div class="stat-card">
                 <h3>👥 Total Students</h3>
                 <p>{{ total_records }}</p>
             </div>
             <div class="stat-card">
-                <h3>⚠️ High Risk Students</h3>
-                <p>{{ high_risk_count }}</p>
+                <h3>⚠️ High Risk</h3>
+                <p>{{ high_risk_count }} <span class="stat-pct">({{ pct_high_risk }}%)</span></p>
+            </div>
+            <div class="stat-card">
+                <h3>💬 Avg Sentiment</h3>
+                <p>{{ avg_sentiment }}</p>
             </div>
         </div>
 
+        <!-- Data Table Section -->
         <div class="section">
-            <h2>📋 Data Overview</h2>
+            <div class="section-header">
+                <h2>📋 Data Overview</h2>
+                <a href="#charts" class="btn-secondary btn-sm">Skip to Charts ↓</a>
+            </div>
             <div class="table-container">
                 <table id="data-table">
                     <thead>
@@ -51,8 +88,11 @@
             </div>
         </div>
 
-        <div class="section">
+        <!-- Visual Insights Section — anchor target -->
+        <div class="section" id="charts">
             <h2>📈 Visual Insights</h2>
+
+            <!-- Row 1: Original 2 -->
             <div class="charts-grid">
                 <div class="chart-container">
                     <h3>Burnout Score Distribution</h3>
@@ -62,16 +102,59 @@
                     <h3>Risk Categories</h3>
                     <img src="{{ url_for('static', filename='plots/risk_pie.png') }}" alt="Risk Categories Pie Chart">
                 </div>
+            </div>
+
+            <!-- Row 2: Line + Heatmap -->
+            <div class="charts-grid">
                 <div class="chart-container">
                     <h3>Average Burnout vs Stress Level</h3>
                     <img src="{{ url_for('static', filename='plots/stress_vs_burnout.png') }}" alt="Stress vs Burnout">
                 </div>
                 <div class="chart-container">
                     <h3>Feature Correlation Heatmap</h3>
-                    <img src="{{ url_for('static', filename='plots/correlation_heatmap.png') }}" alt="Correlation HeatMap">
+                    <img src="{{ url_for('static', filename='plots/correlation_heatmap.png') }}"
+                        alt="Correlation HeatMap">
+                </div>
+            </div>
+
+            <!-- Row 3: New charts -->
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <h3>Sleep Hours vs Burnout Score</h3>
+                    <img src="{{ url_for('static', filename='plots/sleep_vs_burnout.png') }}"
+                        alt="Sleep vs Burnout Scatter">
+                </div>
+                <div class="chart-container">
+                    <h3>Burnout by Risk Tier (Box Plot)</h3>
+                    <img src="{{ url_for('static', filename='plots/burnout_boxplot.png') }}"
+                        alt="Burnout Box Plot by Risk">
+                </div>
+            </div>
+
+            <!-- Row 4: Sentiment -->
+            <div class="charts-grid charts-grid-single">
+                <div class="chart-container">
+                    <h3>Sentiment Score Distribution</h3>
+                    <img src="{{ url_for('static', filename='plots/sentiment_dist.png') }}"
+                        alt="Sentiment Distribution">
                 </div>
             </div>
         </div>
     </div>
+
+    <script>
+        const toggle = document.getElementById('theme-toggle');
+        const saved = localStorage.getItem('theme') || 'light';
+        toggle.textContent = saved === 'dark' ? '☀️' : '🌙';
+
+        toggle.addEventListener('click', () => {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+            toggle.textContent = next === 'dark' ? '☀️' : '🌙';
+        });
+    </script>
 </body>
+
 </html>
