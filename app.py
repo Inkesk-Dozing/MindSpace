@@ -20,10 +20,18 @@ app.config['SECRET_KEY'] = 'secret'
 
 # Global DataFrame to hold data
 data_df = None
+data_df_b = None  # NEW
 
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/reset')
+def reset():
+    global data_df, data_df_b
+    data_df = None
+    data_df_b = None
+    return redirect(url_for('index'))
 
 @app.route('/upload', methods=['POST'])
 def upload():
@@ -73,6 +81,62 @@ def process_data():
         data_df['sentiment_score'] = data_df['feedback'].apply(lambda x: sia.polarity_scores(str(x))['compound'])
     else:
         data_df['sentiment_score'] = 0
+
+# NEW - shared processing logic for second dataset
+def _process(df):
+    numeric_cols = ['sleep_hours', 'study_hours', 'stress_level']
+    for col in numeric_cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+    df['burnout_score'] = df.apply(
+        lambda row: ((row['study_hours'] / row['sleep_hours'] if row['sleep_hours'] > 0 else 0) * row['stress_level']) * 10,
+        axis=1
+    )
+    df['burnout_score'] = np.clip(df['burnout_score'], 0, 100)
+    df['risk'] = pd.cut(df['burnout_score'], bins=[-1, 33, 66, 101], labels=['Low', 'Medium', 'High'])
+    sia = SentimentIntensityAnalyzer()
+    if 'feedback' in df.columns:
+        df['sentiment_score'] = df['feedback'].apply(lambda x: sia.polarity_scores(str(x))['compound'])
+    else:
+        df['sentiment_score'] = 0
+
+
+# NEW - upload second dataset for comparison
+@app.route('/upload_b', methods=['POST'])
+def upload_b():
+    global data_df_b
+    if 'file' not in request.files:
+        return redirect(url_for('dashboard'))
+    file = request.files['file']
+    if file and file.filename.endswith('.csv'):
+        try:
+            data_df_b = pd.read_csv(file)
+            _process(data_df_b)
+            return redirect(url_for('compare'))
+        except Exception as e:
+            print(f"Error reading CSV: {e}")
+    return redirect(url_for('dashboard'))
+
+# NEW - compare two datasets
+@app.route('/compare')
+def compare():
+    global data_df, data_df_b
+    if data_df is None or data_df_b is None:
+        return redirect(url_for('dashboard'))
+
+    def get_stats(df):
+        risk_counts = df['risk'].value_counts().to_dict()
+        return {
+            'avg_burnout': round(df['burnout_score'].mean(), 1),
+            'total_records': len(df),
+            'high_risk_count': int((df['risk'] == 'High').sum()),
+            'risk_data': [risk_counts.get('Low', 0), risk_counts.get('Medium', 0), risk_counts.get('High', 0)],
+            'burnout_scores': df['burnout_score'].tolist()
+        }
+
+    return render_template('compare.html',
+                           stats_a=get_stats(data_df),
+                           stats_b=get_stats(data_df_b))
 
 @app.route('/dashboard')
 def dashboard():

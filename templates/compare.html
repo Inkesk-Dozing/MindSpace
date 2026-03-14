@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MindSpace - Compare Datasets</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    
+<nav class="breadcrumb-bar">
+    <a href="{{ url_for('index') }}">🏠 Home</a>
+    {% if request.endpoint == 'dashboard' %}
+        <span> > </span><span class="active">Dashboard</span>
+    {% elif request.endpoint == 'edit' %}
+        <span> > </span><a href="{{ url_for('dashboard') }}">Dashboard</a>
+        <span> > </span><span class="active">Edit Dataset</span>
+    {% elif request.endpoint == 'compare' %}
+        <span> > </span><a href="{{ url_for('dashboard') }}">Dashboard</a>
+        <span> > </span><span class="active">Compare</span>
+    {% endif %}
+</nav>
+
+    <div class="container">
+        <div class="dashboard-header">
+            <h1>📊 Dataset Comparison</h1>
+            <div class="nav-actions">
+                <a href="{{ url_for('dashboard') }}" class="nav-link">← Back to Dashboard</a>
+                <a href="{{ url_for('index') }}" class="nav-link">🏠 Home</a>
+            </div>
+        </div>
+
+        <div class="compare-grid">
+            <!-- Dataset A -->
+            <div class="compare-card">
+                <h2>📁 Dataset A (Mid-terms)</h2>
+                <div class="stat-card">
+                    <h3>📊 Avg Burnout Score</h3>
+                    <p>{{ stats_a.avg_burnout }}</p>
+                </div>
+                <div class="stat-card">
+                    <h3>👥 Total Students</h3>
+                    <p>{{ stats_a.total_records }}</p>
+                </div>
+                <div class="stat-card">
+                    <h3>⚠️ High Risk</h3>
+                    <p>{{ stats_a.high_risk_count }}</p>
+                </div>
+                <div class="risk-breakdown">
+                    <p>🟢 Low: {{ stats_a.risk_data[0] }} &nbsp;
+                       🟡 Medium: {{ stats_a.risk_data[1] }} &nbsp;
+                       🔴 High: {{ stats_a.risk_data[2] }}</p>
+                </div>
+            </div>
+
+            <!-- Dataset B -->
+            <div class="compare-card">
+                <h2>📁 Dataset B (Finals)</h2>
+                <div class="stat-card">
+                    <h3>📊 Avg Burnout Score</h3>
+                    <p>{{ stats_b.avg_burnout }}</p>
+                </div>
+                <div class="stat-card">
+                    <h3>👥 Total Students</h3>
+                    <p>{{ stats_b.total_records }}</p>
+                </div>
+                <div class="stat-card">
+                    <h3>⚠️ High Risk</h3>
+                    <p>{{ stats_b.high_risk_count }}</p>
+                </div>
+                <div class="risk-breakdown">
+                    <p>🟢 Low: {{ stats_b.risk_data[0] }} &nbsp;
+                       🟡 Medium: {{ stats_b.risk_data[1] }} &nbsp;
+                       🔴 High: {{ stats_b.risk_data[2] }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

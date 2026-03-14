@@ -6,10 +6,36 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
+
+<nav class="breadcrumb-bar">
+    <a href="{{ url_for('index') }}">🏠 Home</a>
+    {% if request.endpoint == 'dashboard' %}
+        <span> > </span><span class="active">Dashboard</span>
+    {% elif request.endpoint == 'edit' %}
+        <span> > </span><a href="{{ url_for('dashboard') }}">Dashboard</a>
+        <span> > </span><span class="active">Edit Dataset</span>
+    {% elif request.endpoint == 'compare' %}
+        <span> > </span><a href="{{ url_for('dashboard') }}">Dashboard</a>
+        <span> > </span><span class="active">Compare</span>
+    {% endif %}
+</nav>
+
     <div class="container">
         <div class="dashboard-header">
             <h1>📈 MindSpace Analytics Dashboard</h1>
-            <a href="{{ url_for('edit') }}" class="nav-link">✏️ Edit Dataset</a>
+            <div class="nav-actions">
+                <a href="{{ url_for('index') }}" class="nav-link">🏠 Home</a>
+                <a href="{{ url_for('reset') }}" class="nav-link">🔄 Load New Dataset</a>
+                <a href="{{ url_for('edit') }}" class="nav-link">✏️ Edit Dataset</a>
+            </div>
+        </div>
+        <div class="compare-section">
+            <h3>📊 Compare With Another Dataset</h3>
+            <p>Upload a second dataset (e.g. Finals) to compare with the current one (e.g. Mid-terms)</p>
+            <form action="/upload_b" method="post" enctype="multipart/form-data">
+                <input type="file" name="file" accept=".csv" required>
+                <button type="submit" class="btn-primary">⚡ Compare Datasets</button>
+            </form>
         </div>
 
         <div class="stats">

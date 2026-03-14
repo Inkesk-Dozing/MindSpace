@@ -6,6 +6,20 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
+
+<nav class="breadcrumb-bar">
+    <a href="{{ url_for('index') }}">🏠 Home</a>
+    {% if request.endpoint == 'dashboard' %}
+        <span> > </span><span class="active">Dashboard</span>
+    {% elif request.endpoint == 'edit' %}
+        <span> > </span><a href="{{ url_for('dashboard') }}">Dashboard</a>
+        <span> > </span><span class="active">Edit Dataset</span>
+    {% elif request.endpoint == 'compare' %}
+        <span> > </span><a href="{{ url_for('dashboard') }}">Dashboard</a>
+        <span> > </span><span class="active">Compare</span>
+    {% endif %}
+</nav>
+
     <h1>Edit Data</h1>
     <a href="{{ url_for('dashboard') }}">Back to Dashboard</a>
     <form method="post">

@@ -7,6 +7,20 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
+
+<nav class="breadcrumb-bar">
+    <a href="{{ url_for('index') }}">🏠 Home</a>
+    {% if request.endpoint == 'dashboard' %}
+        <span> > </span><span class="active">Dashboard</span>
+    {% elif request.endpoint == 'edit' %}
+        <span> > </span><a href="{{ url_for('dashboard') }}">Dashboard</a>
+        <span> > </span><span class="active">Edit Dataset</span>
+    {% elif request.endpoint == 'compare' %}
+        <span> > </span><a href="{{ url_for('dashboard') }}">Dashboard</a>
+        <span> > </span><span class="active">Compare</span>
+    {% endif %}
+</nav>
+
     <div class="container">
         <div class="hero">
             <h1>🧠 MindSpace Analytics</h1>
