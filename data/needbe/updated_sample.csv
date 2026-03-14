@@ -1,0 +1,8 @@
+student_id,student_name,sleep_hours,study_hours,stress_level,feedback,burnout_score,risk,sentiment_score
+S001,Aanya Sharma,7,5,8,Feeling overwhelmed,57.142857142857146,Medium,0.1779
+S002,Rohan Mehta,6,7,9,Too much pressure,100.0,High,-0.296
+S003,Priya Singh,8,4,6,Balanced but tired,30.0,Low,-0.5927
+S004,Arjun Patel,9,3,7,Managing okay,23.33333333333333,Low,0.2263
+S005,Neha Gupta,5,6,9,Struggling with workload,100.0,High,-0.4215
+S006,Vikram Rao,10,2,4,Feeling good today,8.0,Low,0.5267
+S007,Ankit,6,4,5,normal,33.33333333333333,Medium,0.0

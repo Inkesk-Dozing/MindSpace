@@ -1,68 +1,68 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
-
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>MindSpace - Edit Data</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <script>
-        (function () {
-            const saved = localStorage.getItem('theme') || 'light';
-            document.documentElement.setAttribute('data-theme', saved);
-        })();
-    </script>
+    <style>
+        .btn { padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+    </style>
 </head>
-
 <body>
     <nav class="navbar">
-        <span class="navbar-brand">🧠 MindSpace</span>
+        <span class="navbar-brand">MindSpace</span>
         <div class="navbar-links">
-            <a href="{{ url_for('dashboard') }}" class="nav-link">📈 Dashboard</a>
-            <button id="theme-toggle" class="theme-btn" aria-label="Toggle dark mode">🌙</button>
+            <a href="{{ url_for('dashboard') }}" class="nav-link">Dashboard</a>
         </div>
     </nav>
 
     <div class="container">
-        <h1>✏️ Edit Data</h1>
+        <h1>Edit Data</h1>
         <form method="post">
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            {% for col in columns %}
-                            <th>{{ col }}</th>
-                            {% endfor %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for i in range(data|length) %}
-                        <tr>
-                            {% for col in columns %}
-                            <td><input type="text" name="{{ col }}_{{ i }}" value="{{ data[i][col] }}"></td>
-                            {% endfor %}
-                        </tr>
+            <table border="1" style="border-collapse: collapse; width: 100%;">
+                <thead>
+                    <tr>
+                        {% for col in columns %}
+                        <th style="padding: 10px; background: #f8f9fa;">{{ col }}</th>
                         {% endfor %}
-                    </tbody>
-                </table>
+                    </tr>
+                </thead>
+                <tbody id="data-body">
+                    {% for i in range(data|length) %}
+                    <tr>
+                        {% for col in columns %}
+                        <td style="padding: 10px;"><input type="text" name="{{ col }}_{{ i }}" value="{{ data[i][col] }}" style="width: 100%; padding: 5px;"></td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div style="margin-top: 20px; text-align: right;">
+                <button type="button" onclick="addRow()" style="background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">Add New Row</button>
+                <button type="button" onclick="location.href='/dashboard'" style="background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">Proceed without saving</button>
+                <button type="submit" style="background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">Save Changes & Proceed</button>
             </div>
-            <button type="submit" class="btn-primary">💾 Save Changes</button>
         </form>
     </div>
 
     <script>
-        const toggle = document.getElementById('theme-toggle');
-        if (toggle) {
-            const saved = localStorage.getItem('theme') || 'light';
-            toggle.textContent = saved === 'dark' ? '☀️' : '🌙';
-            toggle.addEventListener('click', () => {
-                const current = document.documentElement.getAttribute('data-theme');
-                const next = current === 'dark' ? 'light' : 'dark';
-                document.documentElement.setAttribute('data-theme', next);
-                localStorage.setItem('theme', next);
-                toggle.textContent = next === 'dark' ? '☀️' : '🌙';
-            });
+        function addRow() {
+            var tbody = document.getElementById('data-body');
+            var rowCount = tbody.rows.length;
+            var newRow = tbody.insertRow(rowCount);
+            
+            var colCount = document.getElementsByTagName('thead')[0].rows[0].cells.length;
+            for (var i = 0; i < colCount; i++) {
+                var cell = newRow.insertCell(i);
+                var input = document.createElement('input');
+                input.type = 'text';
+                input.name = document.getElementsByTagName('thead')[0].rows[0].cells[i].innerHTML.replace(/<[^>]*>/g, '').replace(/ /g, '_') + '_' + rowCount;
+                input.style = 'width: 100%; padding: 5px;';
+                cell.appendChild(input);
+            }
         }
     </script>
 </body>
-
 </html>
