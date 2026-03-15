@@ -14,12 +14,14 @@
 </head>
 
 <body>
-    <nav class="navbar">
-        <span class="navbar-brand">🧠 MindSpace</span>
-        <div class="navbar-links">
-            <a href="{{ url_for('dashboard') }}" class="nav-link">📈 Dashboard</a>
-            <button id="theme-toggle" class="theme-btn" aria-label="Toggle dark mode">🌙</button>
-        </div>
+    <nav class="breadcrumb-bar">
+        {% for crumb in breadcrumbs %}
+            {% if not loop.last %}
+                <a href="{{ crumb.url }}">{{ crumb.name }}</a> <span> > </span>
+            {% else %}
+                <span class="active">{{ crumb.name }}</span>
+            {% endif %}
+        {% endfor %}
     </nav>
 
     <div class="container">

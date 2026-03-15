@@ -8,16 +8,13 @@
 <body>
     
 <nav class="breadcrumb-bar">
-    <a href="{{ url_for('index') }}">🏠 Home</a>
-    {% if request.endpoint == 'dashboard' %}
-        <span> > </span><span class="active">Dashboard</span>
-    {% elif request.endpoint == 'edit' %}
-        <span> > </span><a href="{{ url_for('dashboard') }}">Dashboard</a>
-        <span> > </span><span class="active">Edit Dataset</span>
-    {% elif request.endpoint == 'compare' %}
-        <span> > </span><a href="{{ url_for('dashboard') }}">Dashboard</a>
-        <span> > </span><span class="active">Compare</span>
-    {% endif %}
+    {% for crumb in breadcrumbs %}
+        {% if not loop.last %}
+            <a href="{{ crumb.url }}">{{ crumb.name }}</a> <span> > </span>
+        {% else %}
+            <span class="active">{{ crumb.name }}</span>
+        {% endif %}
+    {% endfor %}
 </nav>
 
     <div class="container">
