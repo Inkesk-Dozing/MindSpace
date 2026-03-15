@@ -2,12 +2,16 @@
 
 {% block title %}Dashboard{% endblock %}
 {% block page_title %}Analytics Dashboard{% endblock %}
-{% block page_subtitle %}{{ total_records }} students analyzed &mdash; here's what the data says.{% endblock %}
+{% block page_subtitle %}{{ total_records }} students analyzed &mdash; insights mapped below.{% endblock %}
 
 {% block top_actions %}
 <div class="controls">
-    <a href="{{ url_for('edit') }}" class="btn btn-outline">✏️ Edit Dataset</a>
-    <a href="{{ url_for('index') }}" class="btn btn-primary">➕ Upload New</a>
+    <a href="{{ url_for('edit') }}" class="btn btn-outline">
+        <i class="ph ph-pencil-simple"></i> Edit Dataset
+    </a>
+    <a href="{{ url_for('index') }}" class="btn btn-primary">
+        <i class="ph ph-plus"></i> Upload New
+    </a>
 </div>
 {% endblock %}
 
@@ -16,68 +20,78 @@
 <!-- Stats Row -->
 <div class="stats-grid" style="margin-bottom:2.5rem">
     <div class="card stat-card-inner">
-        <div class="stat-label">Avg Burnout</div>
-        <div class="stat-val" style="color: var(--accent-risk)">{{ avg_burnout }}</div>
+        <i class="ph-fill ph-fire bg-icon"></i>
+        <div class="stat-label"><i class="ph ph-fire" style="color: var(--danger)"></i> Avg Burnout</div>
+        <div class="stat-val" style="color: var(--danger)">{{ avg_burnout }}</div>
         <div class="stat-sub">out of 100</div>
     </div>
     <div class="card stat-card-inner">
-        <div class="stat-label">Median / StdDev</div>
-        <div class="stat-val" style="color: var(--accent-blue)">{{ median_burnout }}</div>
-        <div class="stat-sub">±{{ std_burnout }}</div>
+        <i class="ph-fill ph-chart-line bg-icon"></i>
+        <div class="stat-label"><i class="ph ph-chart-line" style="color: var(--info)"></i> Median / StdDev</div>
+        <div class="stat-val" style="color: var(--info)">{{ median_burnout }}</div>
+        <div class="stat-sub">±{{ std_burnout }} spread</div>
     </div>
     <div class="card stat-card-inner">
-        <div class="stat-label">High-Risk Students</div>
-        <div class="stat-val" style="color: var(--accent-purple)">{{ high_risk_count }}</div>
+        <i class="ph-fill ph-warning-circle bg-icon"></i>
+        <div class="stat-label"><i class="ph ph-warning-circle" style="color: var(--brand-primary)"></i> High-Risk Students</div>
+        <div class="stat-val" style="color: var(--brand-primary)">{{ high_risk_count }}</div>
         <div class="stat-sub">({{ pct_high_risk }}% of cohort)</div>
     </div>
     <div class="card stat-card-inner">
-        <div class="stat-label">Avg Sentiment</div>
-        <div class="stat-val" style="color: var(--accent-emerald)">{{ avg_sentiment }}</div>
-        <div class="stat-sub">compound score</div>
+        <i class="ph-fill ph-smiley bg-icon"></i>
+        <div class="stat-label"><i class="ph ph-smiley" style="color: var(--success)"></i> Avg Sentiment</div>
+        <div class="stat-val" style="color: var(--success)">{{ avg_sentiment }}</div>
+        <div class="stat-sub">compound score (-1 to +1)</div>
     </div>
 </div>
 
 <!-- Dataset Accordion -->
-<div class="card" style="margin-bottom: 2.5rem">
-    <div class="accordion-header" id="toggle-data">
-        <h3>📋 Student Records <span id="visible-counter" class="badge badge-medium" style="font-size:0.75rem"></span>
+<div class="card" style="margin-bottom: 2.5rem; padding: 0; overflow: hidden;">
+    <div class="accordion-header" id="toggle-data" style="padding: 1.5rem;">
+        <h3 style="display: flex; align-items: center; gap: 8px;">
+            <i class="ph-duotone ph-table"></i> Student Records 
+            <span id="visible-counter" class="badge badge-medium" style="font-size:0.75rem; margin-left: 8px;"></span>
         </h3>
-        <button class="expand-btn" aria-label="Toggle data view">
-            <span class="chevron">▼</span>
+        <button class="btn btn-outline" aria-label="Toggle data view" style="pointer-events: none;">
             <span class="btn-text">Expand All</span>
+            <i class="ph ph-caret-down chevron"></i>
         </button>
     </div>
 
-    <div id="data-accordion" class="accordion-body">
+    <div id="data-accordion" class="accordion-body" style="margin-top: 0;">
         <!-- Filters -->
         <div class="table-filters">
-            <input type="text" id="search-input" class="filter-input" placeholder="🔍  Search feedback, score…">
+            <div style="position: relative;">
+                <i class="ph ph-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted)"></i>
+                <input type="text" id="search-input" class="filter-input" placeholder="Search feedback, scores…" style="padding-left: 36px;">
+            </div>
+            
             <select id="risk-filter" class="filter-select">
                 <option value="All">All Risk Levels</option>
-                <option value="Low">🟢 Low</option>
-                <option value="Medium">🟡 Medium</option>
-                <option value="High">🔴 High</option>
+                <option value="Low">🟢 Low Risk</option>
+                <option value="Medium">🟡 Medium Risk</option>
+                <option value="High">🔴 High Risk</option>
             </select>
             <span class="row-counter">
-                Showing <strong id="visible-count">—</strong> of <strong id="total-count">—</strong>
+                Showing <strong id="visible-count" style="color: var(--text-primary)">—</strong> of <strong id="total-count" style="color: var(--text-primary)">—</strong>
             </span>
         </div>
 
         <!-- Table -->
-        <div class="table-wrapper">
+        <div class="table-wrapper" style="border: none; border-radius: 0;">
             <table id="data-table">
                 <thead>
                     <tr>
                         <th>#</th>
                         {% for col in columns %}
-                        <th>{{ col }}</th>
+                        <th>{{ col|replace('_', ' ')|title }}</th>
                         {% endfor %}
                     </tr>
                 </thead>
                 <tbody>
                     {% for row in data %}
                     <tr data-row="{{ loop.index }}" data-risk="{{ row.risk|default('') }}">
-                        <td class="row-num">{{ loop.index }}</td>
+                        <td class="row-num" style="color: var(--text-muted)">{{ loop.index }}</td>
                         {% for col in columns %}
                         <td>
                             {%- if col == 'risk' -%}
@@ -96,17 +110,19 @@
 </div>
 
 <!-- Charts Section -->
-<h2 id="charts" style="margin-bottom: 2rem; font-size:1.4rem; font-weight:600;">📊 Visual Insights <span
-        style="font-weight:300; color: var(--text-secondary); font-size:0.95rem">(scroll for all 10 charts)</span></h2>
+<h2 id="charts" style="margin-bottom: 2rem; font-size:1.5rem; font-weight:700; display: flex; align-items: center; gap: 8px;">
+    <i class="ph-duotone ph-presentation-chart"></i> Visual Insights 
+    <span style="font-weight:400; color: var(--text-secondary); font-size:1rem">(Scroll to explore)</span>
+</h2>
 
-{% macro chart_card(title, desc, takeaway, img_url, img_alt, reverse=false) %}
-<div class="card insight-row {% if reverse %}reverse{% endif %}" style="margin-bottom: 2rem">
+{% macro chart_card(icon, title, desc, takeaway, img_url, img_alt, reverse=false) %}
+<div class="card insight-row {% if reverse %}reverse{% endif %}" style="margin-bottom: 2.5rem">
     <div class="insight-text-col">
-        <h3 class="insight-title">{{ title }}</h3>
+        <h3 class="insight-title"><i class="ph-duotone {{ icon }}"></i> {{ title }}</h3>
         <p class="insight-desc">{{ desc }}</p>
         <div class="takeaway-box">
-            <strong>Key Takeaway</strong>
-            <p>{{ takeaway }}</p>
+            <strong><i class="ph-fill ph-lightbulb"></i> Key Takeaway</strong>
+            <p style="margin-top: 6px;">{{ takeaway }}</p>
         </div>
     </div>
     <div class="insight-visual-col">
@@ -116,14 +132,15 @@
 {% endmacro %}
 
 {{ chart_card(
+"ph-chart-bar",
 "Burnout Score Distribution",
 "How burnout scores are spread across the whole student population. Each bar represents a range of scores.",
-"Peaks clustered above 60 indicate that a significant portion of this cohort is under chronic pressure — intervention at
-the mid-range can prevent escalation.",
+"Peaks clustered above 60 indicate that a significant portion of this cohort is under chronic pressure — intervention at the mid-range can prevent escalation.",
 url_for('static', filename='plots/score_hist.png'), "Burnout Histogram"
 ) }}
 
 {{ chart_card(
+"ph-chart-pie-slice",
 "Burnout Risk Proportions",
 "Categorical slice of the cohort: what share falls into Low, Medium, and High burnout risk.",
 "If High-risk exceeds 25%, the cohort needs structural support — not just individual counselling.",
@@ -131,6 +148,7 @@ url_for('static', filename='plots/risk_pie.png'), "Risk Pie", reverse=true
 ) }}
 
 {{ chart_card(
+"ph-trend-up",
 "Stress Level vs Avg Burnout",
 "Average burnout score at each self-reported stress level (1–10). Bars show how burnout tracks stress.",
 "The jump from stress level 7 to 8 is typically steeper — that's where sleep deprivation compounds the load.",
@@ -138,6 +156,7 @@ url_for('static', filename='plots/stress_vs_burnout.png'), "Stress vs Burnout"
 ) }}
 
 {{ chart_card(
+"ph-squares-four",
 "Feature Correlation Heatmap",
 "Strength and direction of linear relationships between sleep, study hours, stress, and burnout.",
 "High positive correlations (study↔burnout, stress↔burnout) tell you which levers to pull first.",
@@ -145,6 +164,7 @@ url_for('static', filename='plots/correlation_heatmap.png'), "Correlation Heatma
 ) }}
 
 {{ chart_card(
+"ph-moon-stars",
 "Sleep Hours vs Burnout Score",
 "Each dot is a student. Colour shows risk tier (green = Low, blue = Medium, red = High).",
 "Students sleeping under 5 hours almost universally appear in the red zone — sleep is the clearest protective factor.",
@@ -152,6 +172,7 @@ url_for('static', filename='plots/sleep_vs_burnout.png'), "Sleep vs Burnout"
 ) }}
 
 {{ chart_card(
+"ph-chart-polar",
 "Burnout Score by Risk Tier",
 "Box-and-whisker plot showing full score spread within each risk category.",
 "Whiskers stretching far inside the 'Medium' box mean uncertain cases — those need closer monitoring.",
@@ -159,6 +180,7 @@ url_for('static', filename='plots/burnout_boxplot.png'), "Burnout Boxplot", reve
 ) }}
 
 {{ chart_card(
+"ph-book-open-text",
 "Study Hours vs Burnout Score",
 "Does studying more always mean more burnout? This scatter reveals the relationship.",
 "At high study loads (10+ hrs/day) burnout is nearly guaranteed unless sleep is preserved. There's no substitute.",
@@ -166,6 +188,7 @@ url_for('static', filename='plots/study_vs_burnout.png'), "Study vs Burnout"
 ) }}
 
 {{ chart_card(
+"ph-intersect",
 "Stress Level vs Sleep Hours",
 "Pattern between how stressed a student is and how much sleep they're actually getting.",
 "The downward trend confirms the inverse relationship — the more stressed, the less sleep, creating a feedback loop.",
@@ -173,6 +196,7 @@ url_for('static', filename='plots/stress_vs_sleep.png'), "Stress vs Sleep", reve
 ) }}
 
 {{ chart_card(
+"ph-chat-centered-text",
 "Sentiment Score Distribution",
 "VADER compound score from student feedback — ranges from -1 (very negative) to +1 (very positive).",
 "A distribution skewed negative despite okay burnout scores signals hidden distress worth investigating qualitatively.",
@@ -180,6 +204,7 @@ url_for('static', filename='plots/sentiment_dist.png'), "Sentiment Distribution"
 ) }}
 
 {{ chart_card(
+"ph-users-three",
 "Sentiment Score vs Burnout Score",
 "Does how students write about their experience match how burned-out they actually are?",
 "Outliers (positive sentiment, high burnout) are potential maskers — students who hide distress in their language.",
@@ -188,8 +213,8 @@ url_for('static', filename='plots/sentiment_vs_burnout.png'), "Sentiment vs Burn
 
 <!-- FAB Buttons -->
 <div class="fab-group">
-    <a href="#charts" class="fab-btn" id="fab-charts" title="Jump to Charts">📊</a>
-    <a href="#top" class="fab-btn" id="fab-top" title="Back to Top">↑</a>
+    <a href="#charts" class="fab-btn" id="fab-charts" title="Jump to Charts"><i class="ph ph-chart-line-up"></i></a>
+    <a href="#top" class="fab-btn" id="fab-top" title="Back to Top"><i class="ph ph-arrow-up"></i></a>
 </div>
 
 {% endblock %}
@@ -214,9 +239,10 @@ url_for('static', filename='plots/sentiment_vs_burnout.png'), "Sentiment vs Burn
     const accordion = document.getElementById('data-accordion');
     const btnText = toggleBtn?.querySelector('.btn-text');
     const chevron = toggleBtn?.querySelector('.chevron');
+    
     toggleBtn?.addEventListener('click', () => {
         const open = accordion.classList.toggle('open');
-        btnText.textContent = open ? 'Collapse' : 'Expand All';
+        btnText.textContent = open ? 'Collapse View' : 'Expand All';
         chevron.style.transform = open ? 'rotate(180deg)' : '';
         if (open) setTimeout(initFilters, 50);
     });
@@ -242,7 +268,7 @@ url_for('static', filename='plots/sentiment_vs_burnout.png'), "Sentiment vs Burn
             if (show) visible++;
         });
         document.getElementById('visible-count').textContent = visible;
-        document.getElementById('visible-counter').textContent = `${visible} shown`;
+        document.getElementById('visible-counter').textContent = `${visible} showing`;
     }
 
     document.getElementById('search-input')?.addEventListener('input', filterTable);

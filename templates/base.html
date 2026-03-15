@@ -1,15 +1,17 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="dark">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MindSpace - {% block title %}{% endblock %}</title>
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script>
         (function () {
-            const saved = localStorage.getItem('theme') || 'light';
+            const saved = localStorage.getItem('theme') || 'dark';
             document.documentElement.setAttribute('data-theme', saved);
         })();
     </script>
@@ -20,40 +22,38 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="brand">
-                <span>🧠 MindSpace</span>
+                <i class="ph-duotone ph-brain"></i>
+                <span>MindSpace</span>
             </div>
 
             <ul class="nav-menu">
                 <li class="nav-item">
                     <a href="{{ url_for('index') }}" class="nav-link {% if active_page == 'index' %}active{% endif %}">
-                        🏠 Home
+                        <i class="ph-duotone ph-house"></i> Home
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ url_for('dashboard') }}"
-                        class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">
-                        📊 Dashboard
+                    <a href="{{ url_for('dashboard') }}" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">
+                        <i class="ph-duotone ph-chart-pie-slice"></i> Dashboard
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ url_for('evaluate') }}"
-                        class="nav-link {% if active_page == 'evaluate' %}active{% endif %}">
-                        🎯 Evaluation
+                    <a href="{{ url_for('evaluate') }}" class="nav-link {% if active_page == 'evaluate' %}active{% endif %}">
+                        <i class="ph-duotone ph-crosshair"></i> Evaluation
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ url_for('compare') }}"
-                        class="nav-link {% if active_page == 'compare' %}active{% endif %}">
-                        🔄 Compare
+                    <a href="{{ url_for('compare') }}" class="nav-link {% if active_page == 'compare' %}active{% endif %}">
+                        <i class="ph-duotone ph-git-diff"></i> Compare
                     </a>
                 </li>
             </ul>
 
             <div class="sidebar-footer">
-                <div class="controls">
-                    <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle dark mode">🌙</button>
-                    <span style="font-size: 0.8rem; color: var(--text-secondary)">v1.2 Restructured</span>
-                </div>
+                <span class="version-tag">v2.1 Stable</span>
+                <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle dark mode">
+                    <i class="ph ph-moon"></i>
+                </button>
             </div>
         </aside>
 
@@ -73,15 +73,28 @@
 
     <script>
         const toggle = document.getElementById('theme-toggle');
+        const icon = toggle.querySelector('i');
+        
+        function updateIcon(theme) {
+            if(theme === 'dark') {
+                icon.classList.remove('ph-sun');
+                icon.classList.add('ph-moon');
+            } else {
+                icon.classList.remove('ph-moon');
+                icon.classList.add('ph-sun');
+            }
+        }
+
         if (toggle) {
-            const saved = localStorage.getItem('theme') || 'light';
-            toggle.textContent = saved === 'dark' ? '☀️' : '🌙';
+            const saved = localStorage.getItem('theme') || 'dark';
+            updateIcon(saved);
+            
             toggle.addEventListener('click', () => {
                 const current = document.documentElement.getAttribute('data-theme');
                 const next = current === 'dark' ? 'light' : 'dark';
                 document.documentElement.setAttribute('data-theme', next);
                 localStorage.setItem('theme', next);
-                toggle.textContent = next === 'dark' ? '☀️' : '🌙';
+                updateIcon(next);
             });
         }
     </script>
