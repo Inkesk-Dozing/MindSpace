@@ -1,7 +1,8 @@
 Flask
 pandas
+numpy
 nltk
 matplotlib
-numpy
 seaborn
+scikit-learn
 python-dotenv==1.0.0

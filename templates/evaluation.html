@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Model Evaluation{% endblock %}
+{% block page_title %}Model Performance{% endblock %}
+{% block page_subtitle %}Random Forest classifier trained on your uploaded burnout dataset.{% endblock %}
+
+{% block content %}
+{% if error %}
+<div class="card" style="border-left: 4px solid var(--accent-risk); padding: 2rem">
+    <h3 style="margin-bottom: 0.5rem">⚠️ Model Not Ready</h3>
+    <p class="insight-desc">{{ error }}</p>
+    <p class="insight-desc" style="margin-top: 1rem">
+        From your project root, run:<br>
+        <code
+            style="background: rgba(255,255,255,0.07); padding: 4px 10px; border-radius: 6px">cd scripts &amp;&amp; python train_model.py</code>
+    </p>
+</div>
+{% else %}
+
+<!-- Top Metrics -->
+<div class="stats-grid" style="margin-bottom: 2.5rem">
+    <div class="card stat-card-inner">
+        <div class="stat-label">Accuracy</div>
+        <div class="stat-val" style="color: var(--accent-emerald)">{{ (metrics.accuracy * 100)|round(2) }}%</div>
+        <div class="stat-sub">{{ metrics.n_test }} test samples</div>
+    </div>
+    <div class="card stat-card-inner">
+        <div class="stat-label">F1 Score (weighted)</div>
+        <div class="stat-val" style="color: var(--accent-purple)">{{ metrics.f1 }}</div>
+        <div class="stat-sub">precision × recall balance</div>
+    </div>
+    <div class="card stat-card-inner">
+        <div class="stat-label">Precision</div>
+        <div class="stat-val" style="color: var(--accent-blue)">{{ metrics.precision }}</div>
+        <div class="stat-sub">weighted</div>
+    </div>
+    <div class="card stat-card-inner">
+        <div class="stat-label">Recall</div>
+        <div class="stat-val" style="color: var(--accent-cyan)">{{ metrics.recall }}</div>
+        <div class="stat-sub">weighted</div>
+    </div>
+</div>
+
+<div class="metrics-grid" style="margin-bottom: 2.5rem">
+    <!-- Confusion Matrix -->
+    <div class="card">
+        <h3 style="margin-bottom: 1.25rem">Confusion Matrix</h3>
+        {% if metrics.confusion_matrix %}
+        <div class="cm-grid" style="--cm-cols: {{ metrics.class_names|length }}">
+            <!-- Header row -->
+            <div class="cm-corner"></div>
+            {% for name in metrics.class_names %}
+            <div class="cm-head">Predicted<br><strong>{{ name }}</strong></div>
+            {% endfor %}
+            <!-- Data rows -->
+            {% for i, row in metrics.confusion_matrix|enumerate %}
+            <div class="cm-side"><strong>Actual {{ metrics.class_names[i] }}</strong></div>
+            {% for j, val in row|enumerate %}
+            <div class="cm-cell {% if i == j %}cm-correct{% else %}cm-wrong{% endif %}">{{ val }}</div>
+            {% endfor %}
+            {% endfor %}
+        </div>
+        {% endif %}
+        <p class="insight-desc" style="margin-top: 1rem; font-size: 0.85rem">
+            Diagonal cells = correct predictions. Off-diagonal = misclassifications.
+        </p>
+    </div>
+
+    <!-- Per-class breakdown -->
+    <div class="card">
+        <h3 style="margin-bottom: 1.25rem">Per-Class Breakdown</h3>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Class</th>
+                        <th>Precision</th>
+                        <th>Recall</th>
+                        <th>F1</th>
+                        <th>Support</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for name in metrics.class_names %}
+                    {% set cls = metrics.report[name] %}
+                    <tr>
+                        <td><span class="badge badge-{{ name|lower }}">{{ name }}</span></td>
+                        <td>{{ cls['precision']|round(2) }}</td>
+                        <td>{{ cls['recall']|round(2) }}</td>
+                        <td>{{ cls['f1-score']|round(2) }}</td>
+                        <td>{{ cls['support']|int }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Interpretation -->
+        <div class="takeaway-box" style="margin-top: 1.5rem">
+            <strong>What these numbers mean for student burnout</strong>
+            <ul style="margin-top: 0.5rem; line-height: 1.8">
+                <li><strong>Precision</strong> — of all students we flagged as "High Risk", how many genuinely were? A
+                    low precision means false alarms, wasted counselling resources.</li>
+                <li><strong>Recall</strong> — did we actually catch the students who were at risk? A low recall means
+                    students slipping through undetected.</li>
+                <li><strong>F1</strong> — the balance point. In welfare contexts, high recall matters more than
+                    precision; missing a crisis is worse than a false positive.</li>
+                <li><strong>Support</strong> — how many students per class appeared in the test split, so you know if a
+                    class had enough representation to be reliable.</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- ROC-AUC notice -->
+{% if metrics.roc_auc %}
+<div class="card" style="margin-bottom: 2rem">
+    <div class="stat-label" style="margin-bottom:4px">ROC-AUC (One-vs-Rest)</div>
+    <div class="stat-val" style="color: var(--accent-cyan)">{{ metrics.roc_auc }}</div>
+    <p class="insight-desc" style="margin-top: 0.5rem">
+        AUC above 0.90 means the model can reliably distinguish between all three risk classes.
+        The closer to 1.0, the less it needs to guess when the decision boundary is tight.
+    </p>
+</div>
+{% endif %}
+
+<!-- Confusion matrix plot if it exists -->
+<div class="card">
+    <h3 style="margin-bottom: 1.25rem">Visual Confusion Matrix</h3>
+    <div style="max-width: 600px; margin: 0 auto">
+        <img src="{{ url_for('static', filename='plots/confusion_matrix.png') }}" alt="Confusion Matrix Plot"
+            style="width: 100%; border-radius: 10px"
+            onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
+        <p style="display:none; color: var(--text-secondary); padding: 1rem">
+            Run <code>python scripts/evaluate.py</code> to generate the plot image.
+        </p>
+    </div>
+</div>
+
+{% endif %}
+{% endblock %}
