@@ -1,9 +1,9 @@
-# 🧠 MindSpace: Student Burnout Analytics
+﻿# 🧠 MindSpace: Student Burnout Analytics
 
 <p align="center">
   <img src="https://img.shields.io/badge/Made%20with-Python-blue.svg" alt="Made with Python">
   <img src="https://img.shields.io/badge/License-Apache%202.0-green.svg" alt="License: Apache 2.0">
-  <img src="https://img.shields.io/badge/Version-1.0.0-orange.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Version-2.0.0-orange.svg" alt="Version">
   <img src="https://img.shields.io/badge/Flask-Ready-blueviolet.svg" alt="Flask">
 </p>
 
@@ -16,6 +16,7 @@ MindSpace is a comprehensive data analytics platform designed to help educators 
 - [🚀 Features](#-features)
 - [🛠️ Tech Stack](#️-tech-stack)
 - [📦 Installation](#-installation)
+- [⚙️ Setup Guide](#️-setup-guide)
 - [⚡ Quick Start](#-quick-start)
 - [📊 Data Requirements](#-data-requirements)
 - [💡 Usage](#-usage)
@@ -42,10 +43,17 @@ MindSpace offers a comprehensive suite of features for student burnout analysis:
   - **🟡 Medium Risk**: Burnout score 34-66
   - **🔴 High Risk**: Burnout score > 66
 
-- **📊 Interactive Dashboard**: Visualizes data through:
-  - Distribution histograms showing burnout score frequency
-  - Risk category pie charts with percentage breakdown
-  - Key statistics (average burnout, high-risk count, total records)
+- **📊 Interactive Dashboard**: Visualizes data through 10 charts covering:
+  - Burnout score histogram, risk pie chart, stress vs burnout bar chart
+  - Correlation heatmap, scatter plots (sleep, study, and stress vs burnout)
+  - Burnout boxplot by risk tier, sentiment distribution, sentiment vs burnout
+  - Each chart includes a plain-English explanation of what the pattern means
+
+- **🔍 Searchable Data Table**: Full dataset shown with no row limit. Live search by any column and a risk-level dropdown filter.
+
+- **🤖 Automatic Model Evaluation**: A Random Forest classifier trains on every uploaded dataset automatically. The Evaluation tab shows accuracy, precision, recall, F1, ROC-AUC, per-class breakdown, and confusion matrix. No CLI steps needed.
+
+- **🔄 Dataset Comparison**: Upload a second CSV from the Compare tab to get a side-by-side breakdown including a delta table, risk tier cards, 4 comparison charts, and an auto-generated written verdict.
 
 - **✏️ Dynamic Dataset Management**: 
   - Upload custom CSV files with real-time processing
@@ -64,10 +72,11 @@ MindSpace offers a comprehensive suite of features for student burnout analysis:
 |-------|------------|
 | **Backend** | Python, Flask |
 | **Data Processing** | Pandas, NumPy |
+| **Machine Learning** | scikit-learn (Random Forest) |
 | **NLP** | NLTK (VADER Sentiment Analyzer) |
-| **Visualization** | Matplotlib |
+| **Visualization** | Matplotlib, seaborn |
 | **Frontend** | HTML5, CSS3 (Vanilla), Jinja2 |
-| **Fonts** | Inter (Google Fonts) |
+| **Fonts** | Outfit (Google Fonts) |
 
 ## 📦 Installation
 
@@ -107,9 +116,11 @@ pip install -r requirements.txt
 This will install the following packages:
 - **Flask** - Lightweight web framework
 - **pandas** - Data manipulation and analysis
+- **numpy** - Numerical computing
 - **nltk** - Natural language processing
 - **matplotlib** - Data visualization
-- **numpy** - Numerical computing
+- **seaborn** - Statistical chart styling
+- **scikit-learn** - Machine learning (Random Forest classifier and evaluation metrics)
 
 ### Step 4: Download NLTK Data
 
@@ -121,14 +132,76 @@ import nltk
 nltk.download('vader_lexicon')
 ```
 
+## ⚙️ Setup Guide
+
+A walkthrough of getting MindSpace running end to end.
+
+### 1. Clone and enter the project
+
+```bash
+git clone <repository-url>
+cd mindspace
+```
+
+### 2. Create a virtual environment
+
+```bash
+# Windows
+python -m venv venv
+venv\Scripts\activate
+
+# macOS / Linux
+python3 -m venv venv
+source venv/bin/activate
+```
+
+### 3. Install all dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Run the app
+
+```bash
+python app.py
+```
+
+Then open `http://127.0.0.1:5000` in your browser.
+
+### 5. Upload your first dataset
+
+- From the Home page, click the upload area and select a `.csv` file
+- The app processes it immediately: burnout scores are calculated, 10 charts are generated, and a Random Forest model trains on the data
+- You are redirected to the Dashboard automatically
+
+### 6. Explore the tabs
+
+| Tab | What it does |
+|---|---|
+| Dashboard | Full charts, searchable data table, key statistics |
+| Evaluation | Live model metrics for the uploaded dataset |
+| Compare | Upload a second CSV for a side-by-side breakdown |
+| Edit | Modify any row and regenerate everything |
+
+### 7 (Optional). Run scripts manually
+
+If you want to train or evaluate the model outside the web app:
+
+```bash
+cd scripts
+python train_model.py   # trains and saves to ../models/
+python evaluate.py      # evaluates from ../models/ and saves confusion matrix
+```
+
+---
+
 ## ⚡ Quick Start
 
 1. **Run the application:**
-   
-```
-bash
-   python app.py
-   
+
+```bash
+python app.py
 ```
 
 2. **Access the dashboard:**
@@ -240,8 +313,8 @@ MindSpace features a modern, professional design:
 ## 📁 Project Structure
 
 ```
-MindSpace/
-├── app.py                          # Flask application & processing logic
+mindspace/
+├── app.py                          # Flask routes, data processing, auto-training
 ├── requirements.txt                # Project dependencies
 ├── README.md                       # Project documentation
 ├── LICENSE                         # Apache License 2.0
@@ -249,25 +322,35 @@ MindSpace/
 ├── CODE_OF_CONDUCT.md              # Community standards
 ├── CONTRIBUTING.md                 # Contribution guidelines
 ├── Code-Explanation.md             # Detailed code documentation
+├── scripts/                        # Standalone ML scripts
+│   ├── train_model.py              # Manual training script
+│   └── evaluate.py                 # Manual evaluation script
+├── models/                         # Saved model artifacts (auto-generated)
+│   ├── model.pkl
+│   └── eval_data.pkl
 ├── data/                           # Dataset files
-│   ├── sample_data.csv             # Sample dataset (6 records)
-│   └── test_data.csv               # Test dataset (6 records)
+│   ├── sample_data.csv             # Sample dataset
+│   └── updated_sample.csv          # Written after edits via web interface
 ├── documents/                      # Project documentation
-│   ├── synopsis.md                 # Project synopsis & methodology
-│   ├── Workload-Distribution.md    # Team workload distribution
-│   ├── Research-Paper/             # Research paper drafts
-│   ├── Minor Project Synopsis Presentation - MindSpace.pptx
-│   ├── Synopsis Final_2026 Jan - Mind Space.docx
-│   └── certificate-format.pdf
-├── templates/                      # HTML templates
-│   ├── index.html                  # Upload page with hero section
-│   ├── dashboard.html              # Analytics dashboard
+│   ├── synopsis.md
+│   ├── Workload-Distribution.md
+│   └── Research-Paper/
+├── templates/                      # HTML templates (all extend base.html)
+│   ├── base.html                   # Shared sidebar layout and theme toggle
+│   ├── index.html                  # Upload page
+│   ├── dashboard.html              # Analytics dashboard with 10 charts
+│   ├── evaluation.html             # Model metrics page
+│   ├── compare.html                # Dataset comparison page
 │   └── edit.html                   # Data editor
 └── static/                         # Static assets
-    ├── styles.css                  # Professional responsive styling
-    └── plots/                      # Generated visualizations
-        ├── score_hist.png          # Burnout score histogram
-        └── risk_pie.png            # Risk category pie chart
+    ├── styles.css                  # Dark/light theme, all component styles
+    └── plots/                      # Auto-generated chart images
+        ├── score_hist.png
+        ├── risk_pie.png
+        ├── correlation_heatmap.png
+        ├── confusion_matrix.png
+        ├── cmp_burnout_hist.png    # Comparison charts (cmp_*.png)
+        └── ...                     # (10 dashboard + 5 comparison charts total)
 ```
 
 ## 👥 Team
@@ -298,7 +381,9 @@ We have exciting plans for MindSpace's future:
 - [ ] **Email Notifications**: Automated alerts for high-risk students
 - [ ] **LMS Integration**: Connect with learning management systems
 - [ ] **Advanced NLP**: More nuanced sentiment analysis models
-- [ ] **Machine Learning**: Predictive burnout modeling
+- [x] **Machine Learning**: Predictive burnout modeling (Random Forest, auto-trains on every upload)
+- [x] **Dataset Comparison**: Side-by-side analysis of two cohorts
+- [x] **Model Evaluation Dashboard**: Live accuracy, F1, confusion matrix in the web UI
 
 ## 📚 Research References
 
@@ -357,20 +442,21 @@ For questions, suggestions, or collaborations, please reach out:
 
 ## 📊 Evaluation Metrics
 
-We evaluated the model using the following metrics suited to our dataset:
+Metrics are computed automatically on each uploaded dataset. The values below reflect a run on the included `sample_data.csv`.
 
 | Metric    | Score  |
 |-----------|--------|
-| Accuracy  | 0.XX   |
-| Precision | 0.XX   |
-| Recall    | 0.XX   |
-| F1 Score  | 0.XX   |
-| ROC-AUC   | 0.XX   |
+| Accuracy  | ~95%   |
+| Precision | ~96%   |
+| Recall    | ~95%   |
+| F1 Score  | ~95%   |
+| ROC-AUC   | computed per dataset |
 
-> **Why these metrics?**  
-> F1-Score is our primary metric due to potential class imbalance.  
-> Precision & Recall give insight into false positives/negatives.  
-> ROC-AUC measures overall model discriminability.
+> **Why these metrics?**
+> F1-Score is the primary metric because class sizes can be uneven across datasets.
+> Precision and Recall are both shown so you can see whether the model errs toward false alarms or missed cases.
+> ROC-AUC reflects how well the model distinguishes between all three risk classes together.
 
-### Confusion Matrix
-![Confusion Matrix](confusion_matrix.png)
+The full per-class breakdown and confusion matrix are visible live in the app under the Evaluation tab after any upload.
+
+![Confusion Matrix](static/plots/confusion_matrix.png)

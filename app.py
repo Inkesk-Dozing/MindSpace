@@ -24,6 +24,8 @@ app.jinja_env.filters['enumerate'] = enumerate
 data_df = None
 corr_matrix = None
 eval_metrics = None  # populated after every upload/process
+compare_df = None    # second dataset for side-by-side comparison
+compare_meta = None  # filename + stats for compare dataset
 
 @app.route('/')
 def index():
@@ -450,6 +452,262 @@ def edit():
         data_length=len(data_df),
         active_page='dashboard'
     )
+
+
+def _build_stats(df):
+    """Compute summary stats dict for one dataset."""
+    sia = SentimentIntensityAnalyzer()
+    if 'feedback' in df.columns:
+        df = df.copy()
+        df['sentiment_score'] = df['feedback'].apply(lambda x: sia.polarity_scores(str(x))['compound'])
+    for col in ['sleep_hours', 'study_hours', 'stress_level']:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+    if 'burnout_score' not in df.columns:
+        df['burnout_score'] = df.apply(
+            lambda r: ((r.get('study_hours', 0) / r.get('sleep_hours', 1)
+                        if r.get('sleep_hours', 0) > 0 else 0) * r.get('stress_level', 0)) * 10,
+            axis=1
+        )
+        df['burnout_score'] = np.clip(df['burnout_score'], 0, 100)
+    if 'risk' not in df.columns:
+        df['risk'] = pd.cut(df['burnout_score'], bins=[-1, 33, 66, 101], labels=['Low', 'Medium', 'High'])
+    risk_counts = df['risk'].value_counts().reindex(['Low', 'Medium', 'High'], fill_value=0)
+    return {
+        'n': len(df),
+        'avg_burnout': round(df['burnout_score'].mean(), 2),
+        'median_burnout': round(df['burnout_score'].median(), 2),
+        'std_burnout': round(df['burnout_score'].std(), 2),
+        'high_risk': int(risk_counts.get('High', 0)),
+        'medium_risk': int(risk_counts.get('Medium', 0)),
+        'low_risk': int(risk_counts.get('Low', 0)),
+        'pct_high': round(risk_counts.get('High', 0) / max(len(df), 1) * 100, 1),
+        'avg_sleep': round(df['sleep_hours'].mean(), 2) if 'sleep_hours' in df.columns else None,
+        'avg_study': round(df['study_hours'].mean(), 2) if 'study_hours' in df.columns else None,
+        'avg_stress': round(df['stress_level'].mean(), 2) if 'stress_level' in df.columns else None,
+        'avg_sentiment': round(df.get('sentiment_score', pd.Series([0])).mean(), 3),
+        '_df': df,
+    }
+
+
+def _generate_compare_plots(stats_a, stats_b, label_a, label_b):
+    """Generate 5 comparison plots saved to static/plots/cmp_*.png."""
+    plot_dir = os.path.join(app.static_folder, 'plots')
+    os.makedirs(plot_dir, exist_ok=True)
+
+    dark_bg  = '#0f1117'
+    text_col = '#c9d1d9'
+    grid_col = '#30363d'
+    col_a    = '#4facfe'
+    col_b    = '#ff9f43'
+
+    def _ax(fig, ax):
+        fig.patch.set_facecolor(dark_bg)
+        ax.set_facecolor(dark_bg)
+        ax.tick_params(colors=text_col, labelsize=9)
+        for sp in ax.spines.values():
+            sp.set_edgecolor(grid_col)
+        ax.yaxis.label.set_color(text_col)
+        ax.xaxis.label.set_color(text_col)
+        ax.title.set_color(text_col)
+        ax.grid(True, color=grid_col, linestyle='--', linewidth=0.5, alpha=0.6)
+
+    df_a = stats_a['_df']
+    df_b = stats_b['_df']
+
+    # 1. Overlaid burnout histograms
+    fig, ax = plt.subplots(figsize=(8, 4), dpi=150)
+    _ax(fig, ax)
+    ax.hist(df_a['burnout_score'], bins=20, color=col_a, alpha=0.6, edgecolor='none', label=label_a)
+    ax.hist(df_b['burnout_score'], bins=20, color=col_b, alpha=0.6, edgecolor='none', label=label_b)
+    ax.legend(facecolor=dark_bg, labelcolor=text_col, edgecolor=grid_col)
+    ax.set_title('Burnout Score Distribution — Overlay')
+    ax.set_xlabel('Burnout Score')
+    ax.set_ylabel('Students')
+    plt.tight_layout()
+    plt.savefig(os.path.join(plot_dir, 'cmp_burnout_hist.png'))
+    plt.close('all')
+
+    # 2. Risk breakdown side-by-side bar
+    fig, ax = plt.subplots(figsize=(7, 4), dpi=150)
+    _ax(fig, ax)
+    cats = ['Low', 'Medium', 'High']
+    va = [stats_a['low_risk'], stats_a['medium_risk'], stats_a['high_risk']]
+    vb = [stats_b['low_risk'], stats_b['medium_risk'], stats_b['high_risk']]
+    x = np.arange(len(cats))
+    w = 0.35
+    ax.bar(x - w/2, va, w, color=col_a, alpha=0.85, label=label_a, edgecolor='none')
+    ax.bar(x + w/2, vb, w, color=col_b, alpha=0.85, label=label_b, edgecolor='none')
+    ax.set_xticks(x)
+    ax.set_xticklabels(cats)
+    ax.legend(facecolor=dark_bg, labelcolor=text_col, edgecolor=grid_col)
+    ax.set_title('Risk Tier Count Comparison')
+    ax.set_ylabel('Number of Students')
+    plt.tight_layout()
+    plt.savefig(os.path.join(plot_dir, 'cmp_risk_bar.png'))
+    plt.close('all')
+
+    # 3. Feature averages radar-style bar
+    feature_labels = ['Avg Sleep\n(hrs)', 'Avg Study\n(hrs)', 'Avg Stress\n(/10)', 'Avg Burnout\n(/100)']
+    scale = [10, 10, 10, 100]   # normalise to 0-1 for fair visual comparison
+    def _safe(v, s): return (v or 0) / s
+    raw_a = [stats_a['avg_sleep'], stats_a['avg_study'], stats_a['avg_stress'], stats_a['avg_burnout']]
+    raw_b = [stats_b['avg_sleep'], stats_b['avg_study'], stats_b['avg_stress'], stats_b['avg_burnout']]
+    na = [_safe(v, s) for v, s in zip(raw_a, scale)]
+    nb = [_safe(v, s) for v, s in zip(raw_b, scale)]
+    fig, ax = plt.subplots(figsize=(8, 4), dpi=150)
+    _ax(fig, ax)
+    xf = np.arange(len(feature_labels))
+    ax.bar(xf - w/2, na, w, color=col_a, alpha=0.85, label=label_a, edgecolor='none')
+    ax.bar(xf + w/2, nb, w, color=col_b, alpha=0.85, label=label_b, edgecolor='none')
+    for xi, (a, b, ra, rb) in enumerate(zip(na, nb, raw_a, raw_b)):
+        ax.text(xi - w/2, a + 0.01, f'{ra or 0:.1f}', ha='center', va='bottom', fontsize=7, color=col_a)
+        ax.text(xi + w/2, b + 0.01, f'{rb or 0:.1f}', ha='center', va='bottom', fontsize=7, color=col_b)
+    ax.set_xticks(xf)
+    ax.set_xticklabels(feature_labels)
+    ax.set_ylabel('Normalised Value (0–1)')
+    ax.set_ylim(0, 1.2)
+    ax.legend(facecolor=dark_bg, labelcolor=text_col, edgecolor=grid_col)
+    ax.set_title('Key Feature Averages — Scaled Comparison')
+    plt.tight_layout()
+    plt.savefig(os.path.join(plot_dir, 'cmp_features.png'))
+    plt.close('all')
+
+    # 4. Burnout score boxplots side by side
+    fig, ax = plt.subplots(figsize=(6, 4), dpi=150)
+    _ax(fig, ax)
+    bp = ax.boxplot(
+        [df_a['burnout_score'].dropna(), df_b['burnout_score'].dropna()],
+        tick_labels=[label_a, label_b], patch_artist=True,
+        medianprops={'color': '#fff', 'linewidth': 2}
+    )
+    for patch, color in zip(bp['boxes'], [col_a, col_b]):
+        patch.set_facecolor(color)
+        patch.set_alpha(0.7)
+    for element in ['whiskers', 'caps']:
+        for item in bp[element]:
+            item.set_color(text_col)
+    ax.set_title('Burnout Score Spread — Side by Side')
+    ax.set_ylabel('Burnout Score')
+    plt.tight_layout()
+    plt.savefig(os.path.join(plot_dir, 'cmp_boxplot.png'))
+    plt.close('all')
+
+    # 5. Sentiment distribution overlay
+    if 'sentiment_score' in df_a.columns and 'sentiment_score' in df_b.columns:
+        fig, ax = plt.subplots(figsize=(8, 4), dpi=150)
+        _ax(fig, ax)
+        ax.hist(df_a['sentiment_score'], bins=15, color=col_a, alpha=0.6, edgecolor='none', label=label_a)
+        ax.hist(df_b['sentiment_score'], bins=15, color=col_b, alpha=0.6, edgecolor='none', label=label_b)
+        ax.axvline(0, color=text_col, linestyle='--', linewidth=0.8, alpha=0.6)
+        ax.legend(facecolor=dark_bg, labelcolor=text_col, edgecolor=grid_col)
+        ax.set_title('Sentiment Score Distribution — Overlay')
+        ax.set_xlabel('VADER Compound Score')
+        ax.set_ylabel('Students')
+        plt.tight_layout()
+        plt.savefig(os.path.join(plot_dir, 'cmp_sentiment.png'))
+        plt.close('all')
+
+
+@app.route('/compare')
+def compare():
+    global data_df, compare_df, compare_meta
+    return render_template(
+        'compare.html',
+        active_page='compare',
+        primary_loaded=data_df is not None,
+        compare_loaded=compare_df is not None,
+        compare_meta=compare_meta,
+    )
+
+
+@app.route('/compare/upload', methods=['POST'])
+def compare_upload():
+    global data_df, compare_df, compare_meta
+    if data_df is None:
+        return redirect(url_for('index'))
+    if 'file' not in request.files or request.files['file'].filename == '':
+        return redirect(url_for('compare'))
+    file = request.files['file']
+    if not file.filename.endswith('.csv'):
+        return redirect(url_for('compare'))
+    try:
+        cdf = pd.read_csv(file)
+        # Apply same preprocessing
+        for col in ['sleep_hours', 'study_hours', 'stress_level']:
+            if col in cdf.columns:
+                cdf[col] = pd.to_numeric(cdf[col], errors='coerce').fillna(0)
+                cdf[col] = cdf[col].apply(lambda x: max(x, 0))
+        cdf['burnout_score'] = cdf.apply(
+            lambda r: ((r.get('study_hours', 0) / r.get('sleep_hours', 1)
+                        if r.get('sleep_hours', 0) > 0 else 0) * r.get('stress_level', 0)) * 10,
+            axis=1
+        )
+        cdf['burnout_score'] = np.clip(cdf['burnout_score'], 0, 100)
+        cdf['risk'] = pd.cut(cdf['burnout_score'], bins=[-1, 33, 66, 101], labels=['Low', 'Medium', 'High'])
+        sia = SentimentIntensityAnalyzer()
+        if 'feedback' in cdf.columns:
+            cdf['sentiment_score'] = cdf['feedback'].apply(lambda x: sia.polarity_scores(str(x))['compound'])
+        compare_df = cdf
+        compare_meta = {'filename': file.filename, 'records': len(cdf)}
+        return redirect(url_for('compare_results'))
+    except Exception as e:
+        print(f"Compare upload error: {e}")
+        return redirect(url_for('compare'))
+
+
+@app.route('/compare/results')
+def compare_results():
+    global data_df, compare_df, compare_meta
+    if data_df is None or compare_df is None:
+        return redirect(url_for('compare'))
+
+    label_a = session.get('history', [{}])[0].get('filename', 'Dataset A') if session.get('history') else 'Dataset A'
+    label_b = compare_meta.get('filename', 'Dataset B')
+
+    stats_a = _build_stats(data_df.copy())
+    stats_b = _build_stats(compare_df.copy())
+    _generate_compare_plots(stats_a, stats_b, label_a, label_b)
+
+    # Strip internal _df before sending to template
+    def _strip(s):
+        return {k: v for k, v in s.items() if k != '_df'}
+
+    # Compute deltas
+    def _delta(a, b):
+        if a is None or b is None:
+            return None
+        return round(b - a, 2)
+
+    deltas = {
+        'avg_burnout':  _delta(stats_a['avg_burnout'],  stats_b['avg_burnout']),
+        'pct_high':     _delta(stats_a['pct_high'],     stats_b['pct_high']),
+        'avg_sleep':    _delta(stats_a['avg_sleep'],    stats_b['avg_sleep']),
+        'avg_study':    _delta(stats_a['avg_study'],    stats_b['avg_study']),
+        'avg_stress':   _delta(stats_a['avg_stress'],   stats_b['avg_stress']),
+        'avg_sentiment':_delta(stats_a['avg_sentiment'],stats_b['avg_sentiment']),
+    }
+
+    return render_template(
+        'compare.html',
+        active_page='compare',
+        primary_loaded=True,
+        compare_loaded=True,
+        compare_meta=compare_meta,
+        label_a=label_a,
+        label_b=label_b,
+        stats_a=_strip(stats_a),
+        stats_b=_strip(stats_b),
+        deltas=deltas,
+    )
+
+
+@app.route('/compare/clear')
+def compare_clear():
+    global compare_df, compare_meta
+    compare_df = None
+    compare_meta = None
+    return redirect(url_for('compare'))
 
 
 if __name__ == '__main__':
