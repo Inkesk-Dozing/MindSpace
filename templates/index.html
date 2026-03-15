@@ -75,6 +75,23 @@
             </form>
         </section>
 
+        <!-- ===== COMPARE SECTION ===== -->
+        <section class="upload-section">
+            <h2>📊 Compare Two Datasets</h2>
+            <p style="margin-bottom: 16px; color: var(--text-muted);">Upload two CSV datasets to compare burnout levels, risk distribution and graphs side by side.</p>
+            <form action="/upload_compare" method="post" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="file-a">Dataset A (e.g. Mid-terms)</label>
+                    <input type="file" id="file-a" name="file_a" accept=".csv" required>
+                </div>
+                <div class="form-group">
+                    <label for="file-b">Dataset B (e.g. Finals)</label>
+                    <input type="file" id="file-b" name="file_b" accept=".csv" required>
+                </div>
+                <button type="submit" class="btn-primary">⚡ Compare Datasets</button>
+            </form>
+        </section>
+
         <!-- ===== DATA REQUIREMENTS ===== -->
         <section class="info-card">
             <h3>📋 Data Requirements</h3>

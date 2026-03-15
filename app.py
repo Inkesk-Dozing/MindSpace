@@ -40,7 +40,7 @@ def inject_breadcrumbs():
 
 # Global DataFrame to hold data
 data_df = None
-data_df_b = None  # NEW
+data_df_b = None  
 
 @app.route('/')
 def index():
@@ -50,9 +50,9 @@ def index():
 @app.route('/reset')
 def reset():
     """Clear all session history."""
-    global data_df, data_df_b  # NEW
-    data_df = None              # NEW
-    data_df_b = None            # NEW
+    global data_df, data_df_b  
+    data_df = None              
+    data_df_b = None            
     session.pop('history', None)
     return redirect(url_for('index'))
 
@@ -139,7 +139,7 @@ def process_data():
     available_cols=[col for col in numericc_cols if col in data_df.columns]
     corr_matrix=data_df[available_cols].corr()
 
-# NEW - shared processing logic for second dataset
+# shared processing logic for second dataset
 def _process(df):
     numeric_cols = ['sleep_hours', 'study_hours', 'stress_level']
     for col in numeric_cols:
@@ -157,7 +157,7 @@ def _process(df):
     else:
         df['sentiment_score'] = 0
 
-# NEW - upload second dataset for comparison
+# upload second dataset for comparison
 @app.route('/upload_b', methods=['POST'])
 def upload_b():
     global data_df_b
@@ -173,12 +173,78 @@ def upload_b():
             print(f"Error reading CSV: {e}")
     return redirect(url_for('dashboard'))
 
-# NEW - compare two datasets
+# upload both datasets from homepage at once
+@app.route('/upload_compare', methods=['POST'])
+def upload_compare():
+    global data_df, data_df_b
+    if 'file_a' not in request.files or 'file_b' not in request.files:
+        return redirect(url_for('index'))
+    file_a = request.files['file_a']
+    file_b = request.files['file_b']
+    if file_a and file_a.filename.endswith('.csv') and file_b and file_b.filename.endswith('.csv'):
+        try:
+            data_df = pd.read_csv(file_a)
+            _process(data_df)
+            data_df_b = pd.read_csv(file_b)
+            _process(data_df_b)
+            return redirect(url_for('compare'))
+        except Exception as e:
+            print(f"Error: {e}")
+    return redirect(url_for('index'))
+
+# compare two datasets
 @app.route('/compare')
 def compare():
     global data_df, data_df_b
     if data_df is None or data_df_b is None:
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('index'))
+
+    plot_dir = os.path.join(app.static_folder, 'plots')
+    os.makedirs(plot_dir, exist_ok=True)
+
+    # Generate comparison plots - Dataset A
+    plt.figure(figsize=(6, 4), dpi=150)
+    plt.hist(data_df['burnout_score'], bins=20, color='#3b82f6', edgecolor='white', alpha=0.8)
+    plt.title('Dataset A - Burnout Distribution', fontsize=12)
+    plt.xlabel('Burnout Score')
+    plt.ylabel('Students')
+    plt.tight_layout()
+    plt.savefig(os.path.join(plot_dir, 'compare_hist_a.png'))
+    plt.close('all')
+
+    # Generate comparison plots - Dataset B
+    plt.figure(figsize=(6, 4), dpi=150)
+    plt.hist(data_df_b['burnout_score'], bins=20, color='#ec4899', edgecolor='white', alpha=0.8)
+    plt.title('Dataset B - Burnout Distribution', fontsize=12)
+    plt.xlabel('Burnout Score')
+    plt.ylabel('Students')
+    plt.tight_layout()
+    plt.savefig(os.path.join(plot_dir, 'compare_hist_b.png'))
+    plt.close('all')
+
+    # Risk pie - Dataset A
+    risk_a = data_df['risk'].value_counts()
+    plt.figure(figsize=(5, 5), dpi=150)
+    if not risk_a.empty:
+        risk_a.plot.pie(autopct='%1.1f%%', colors=["#e28e0f", "#ef4444", "#3b82f6"],
+                        startangle=140, textprops={'fontsize': 9, 'color': 'white', 'weight': 'bold'})
+    plt.title('Dataset A - Risk Categories', fontsize=12)
+    plt.ylabel('')
+    plt.tight_layout()
+    plt.savefig(os.path.join(plot_dir, 'compare_pie_a.png'))
+    plt.close('all')
+
+    # Risk pie - Dataset B
+    risk_b = data_df_b['risk'].value_counts()
+    plt.figure(figsize=(5, 5), dpi=150)
+    if not risk_b.empty:
+        risk_b.plot.pie(autopct='%1.1f%%', colors=["#e28e0f", "#ef4444", "#3b82f6"],
+                        startangle=140, textprops={'fontsize': 9, 'color': 'white', 'weight': 'bold'})
+    plt.title('Dataset B - Risk Categories', fontsize=12)
+    plt.ylabel('')
+    plt.tight_layout()
+    plt.savefig(os.path.join(plot_dir, 'compare_pie_b.png'))
+    plt.close('all')
 
     def get_stats(df):
         risk_counts = df['risk'].value_counts().to_dict()
