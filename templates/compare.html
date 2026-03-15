@@ -1,24 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MindSpace - Compare Datasets</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script>
+        /* Apply saved theme immediately — prevents flash of wrong theme */
+        (function () {
+            const saved = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', saved);
+        })();
+    </script>
 </head>
-<body>
-    
-<nav class="breadcrumb-bar">
-    <a href="{{ url_for('index') }}">🏠 Home</a>
-    {% if request.endpoint == 'dashboard' %}
+
+<body data-theme="light">
+    <nav class="navbar">
+        <span class="navbar-brand">🧠 MindSpace</span>
+        <button id="theme-toggle" class="theme-btn" aria-label="Toggle dark mode">🌙</button>
+    </nav>
+
+    <nav class="breadcrumb-bar">
+        <a href="{{ url_for('index') }}">🏠 Home</a>
+        {% if request.endpoint == 'dashboard' %}
         <span> > </span><span class="active">Dashboard</span>
-    {% elif request.endpoint == 'edit' %}
+        {% elif request.endpoint == 'edit' %}
         <span> > </span><a href="{{ url_for('dashboard') }}">Dashboard</a>
         <span> > </span><span class="active">Edit Dataset</span>
-    {% elif request.endpoint == 'compare' %}
+        {% elif request.endpoint == 'compare' %}
         <span> > </span><a href="{{ url_for('dashboard') }}">Dashboard</a>
         <span> > </span><span class="active">Compare</span>
-    {% endif %}
-</nav>
+        {% endif %}
+    </nav>
 
     <div class="container">
         <div class="dashboard-header">
@@ -47,8 +61,8 @@
                 </div>
                 <div class="risk-breakdown">
                     <p>🟢 Low: {{ stats_a.risk_data[0] }} &nbsp;
-                       🟡 Medium: {{ stats_a.risk_data[1] }} &nbsp;
-                       🔴 High: {{ stats_a.risk_data[2] }}</p>
+                        🟡 Medium: {{ stats_a.risk_data[1] }} &nbsp;
+                        🔴 High: {{ stats_a.risk_data[2] }}</p>
                 </div>
             </div>
 
@@ -69,11 +83,27 @@
                 </div>
                 <div class="risk-breakdown">
                     <p>🟢 Low: {{ stats_b.risk_data[0] }} &nbsp;
-                       🟡 Medium: {{ stats_b.risk_data[1] }} &nbsp;
-                       🔴 High: {{ stats_b.risk_data[2] }}</p>
+                        🟡 Medium: {{ stats_b.risk_data[1] }} &nbsp;
+                        🔴 High: {{ stats_b.risk_data[2] }}</p>
                 </div>
             </div>
         </div>
     </div>
+    <script>
+        /* Dark mode toggle — null-safe */
+        const toggle = document.getElementById('theme-toggle');
+        if (toggle) {
+            const saved = localStorage.getItem('theme') || 'light';
+            toggle.textContent = saved === 'dark' ? '☀️' : '🌙';
+            toggle.addEventListener('click', () => {
+                const current = document.documentElement.getAttribute('data-theme');
+                const next = current === 'dark' ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', next);
+                localStorage.setItem('theme', next);
+                toggle.textContent = next === 'dark' ? '☀️' : '🌙';
+            });
+        }
+    </script>
 </body>
+
 </html>
