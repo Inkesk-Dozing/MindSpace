@@ -1,109 +1,55 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MindSpace - Compare Datasets</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <script>
-        /* Apply saved theme immediately — prevents flash of wrong theme */
-        (function () {
-            const saved = localStorage.getItem('theme') || 'light';
-            document.documentElement.setAttribute('data-theme', saved);
-        })();
-    </script>
-</head>
+{% block title %}Compare Datasets{% endblock %}
+{% block page_title %}🔄 Comparative Analytics{% endblock %}
+{% block page_subtitle %}Benchmarking dataset variants side-by-side.{% endblock %}
 
-<body data-theme="light">
-    <nav class="navbar">
-        <span class="navbar-brand">🧠 MindSpace</span>
-        <button id="theme-toggle" class="theme-btn" aria-label="Toggle dark mode">🌙</button>
-    </nav>
-
-    <nav class="breadcrumb-bar">
-        <a href="{{ url_for('index') }}">🏠 Home</a>
-        {% if request.endpoint == 'dashboard' %}
-        <span> > </span><span class="active">Dashboard</span>
-        {% elif request.endpoint == 'edit' %}
-        <span> > </span><a href="{{ url_for('dashboard') }}">Dashboard</a>
-        <span> > </span><span class="active">Edit Dataset</span>
-        {% elif request.endpoint == 'compare' %}
-        <span> > </span><a href="{{ url_for('dashboard') }}">Dashboard</a>
-        <span> > </span><span class="active">Compare</span>
-        {% endif %}
-    </nav>
-
-    <div class="container">
-        <div class="dashboard-header">
-            <h1>📊 Dataset Comparison</h1>
-            <div class="nav-actions">
-                <a href="{{ url_for('dashboard') }}" class="nav-link">← Back to Dashboard</a>
-                <a href="{{ url_for('index') }}" class="nav-link">🏠 Home</a>
+{% block content %}
+<div class="metrics-grid">
+    <!-- Dataset A -->
+    <div class="card" style="border-top: 4px solid var(--accent-cyan)">
+        <h2 style="margin-bottom: 1.5rem">📁 Variant A (Primary)</h2>
+        <div class="stats-grid" style="grid-template-columns: 1fr 1fr">
+            <div class="card" style="background: rgba(255,255,255,0.03)">
+                <div class="stat-label">Avg Burnout</div>
+                <div class="stat-val" style="font-size: 1.5rem">{{ stats_a.avg_burnout }}</div>
+            </div>
+            <div class="card" style="background: rgba(255,255,255,0.03)">
+                <div class="stat-label">Volume</div>
+                <div class="stat-val" style="font-size: 1.5rem">{{ stats_a.total_records }}</div>
             </div>
         </div>
-
-        <div class="compare-grid">
-            <!-- Dataset A -->
-            <div class="compare-card">
-                <h2>📁 Dataset A (Mid-terms)</h2>
-                <div class="stat-card">
-                    <h3>📊 Avg Burnout Score</h3>
-                    <p>{{ stats_a.avg_burnout }}</p>
-                </div>
-                <div class="stat-card">
-                    <h3>👥 Total Students</h3>
-                    <p>{{ stats_a.total_records }}</p>
-                </div>
-                <div class="stat-card">
-                    <h3>⚠️ High Risk</h3>
-                    <p>{{ stats_a.high_risk_count }}</p>
-                </div>
-                <div class="risk-breakdown">
-                    <p>🟢 Low: {{ stats_a.risk_data[0] }} &nbsp;
-                        🟡 Medium: {{ stats_a.risk_data[1] }} &nbsp;
-                        🔴 High: {{ stats_a.risk_data[2] }}</p>
-                </div>
-            </div>
-
-            <!-- Dataset B -->
-            <div class="compare-card">
-                <h2>📁 Dataset B (Finals)</h2>
-                <div class="stat-card">
-                    <h3>📊 Avg Burnout Score</h3>
-                    <p>{{ stats_b.avg_burnout }}</p>
-                </div>
-                <div class="stat-card">
-                    <h3>👥 Total Students</h3>
-                    <p>{{ stats_b.total_records }}</p>
-                </div>
-                <div class="stat-card">
-                    <h3>⚠️ High Risk</h3>
-                    <p>{{ stats_b.high_risk_count }}</p>
-                </div>
-                <div class="risk-breakdown">
-                    <p>🟢 Low: {{ stats_b.risk_data[0] }} &nbsp;
-                        🟡 Medium: {{ stats_b.risk_data[1] }} &nbsp;
-                        🔴 High: {{ stats_b.risk_data[2] }}</p>
-                </div>
+        <div style="margin-top: 1.5rem">
+            <h4>Risk Segmentation</h4>
+            <div style="display: flex; gap: 8px; margin-top: 8px">
+                <span class="badge badge-low">L: {{ stats_a.risk_data[0] }}</span>
+                <span class="badge badge-medium">M: {{ stats_a.risk_data[1] }}</span>
+                <span class="badge badge-high">H: {{ stats_a.risk_data[2] }}</span>
             </div>
         </div>
     </div>
-    <script>
-        /* Dark mode toggle — null-safe */
-        const toggle = document.getElementById('theme-toggle');
-        if (toggle) {
-            const saved = localStorage.getItem('theme') || 'light';
-            toggle.textContent = saved === 'dark' ? '☀️' : '🌙';
-            toggle.addEventListener('click', () => {
-                const current = document.documentElement.getAttribute('data-theme');
-                const next = current === 'dark' ? 'light' : 'dark';
-                document.documentElement.setAttribute('data-theme', next);
-                localStorage.setItem('theme', next);
-                toggle.textContent = next === 'dark' ? '☀️' : '🌙';
-            });
-        }
-    </script>
-</body>
 
-</html>
+    <!-- Dataset B -->
+    <div class="card" style="border-top: 4px solid var(--accent-purple)">
+        <h2 style="margin-bottom: 1.5rem">📁 Variant B (Comparison)</h2>
+        <div class="stats-grid" style="grid-template-columns: 1fr 1fr">
+            <div class="card" style="background: rgba(255,255,255,0.03)">
+                <div class="stat-label">Avg Burnout</div>
+                <div class="stat-val" style="font-size: 1.5rem">{{ stats_b.avg_burnout }}</div>
+            </div>
+            <div class="card" style="background: rgba(255,255,255,0.03)">
+                <div class="stat-label">Volume</div>
+                <div class="stat-val" style="font-size: 1.5rem">{{ stats_b.total_records }}</div>
+            </div>
+        </div>
+        <div style="margin-top: 1.5rem">
+            <h4>Risk Segmentation</h4>
+            <div style="display: flex; gap: 8px; margin-top: 8px">
+                <span class="badge badge-low">L: {{ stats_b.risk_data[0] }}</span>
+                <span class="badge badge-medium">M: {{ stats_b.risk_data[1] }}</span>
+                <span class="badge badge-high">H: {{ stats_b.risk_data[2] }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

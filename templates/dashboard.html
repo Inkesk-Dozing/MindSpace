@@ -1,352 +1,251 @@
-<!DOCTYPE html>
-<html lang="en" data-theme="light">
-<head>
-    <meta charset="UTF-8">
-    <title>MindSpace - Dashboard</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <script>
-        (function () {
-            const saved = localStorage.getItem('theme') || 'light';
-            document.documentElement.setAttribute('data-theme', saved);
-        })();
-    </script>
-</head>
-<body>
-    <nav class="navbar">
-        <span class="navbar-brand">🧠 MindSpace</span>
-        <div class="navbar-links">
-            <a href="{{ url_for('index') }}" class="nav-link">🏠 Home</a>
-            <a href="{{ url_for('edit') }}" class="nav-link">✏️ Edit Dataset</a>
-            <a href="#charts" class="nav-link">📈 Jump to Charts</a>
-            <button id="theme-toggle" class="theme-btn" aria-label="Toggle dark mode">🌙</button>
-        </div>
-    </nav>
+{% extends "base.html" %}
 
-    <div class="container">
-        <div class="dashboard-header" id="top">
-            <h1>📈 MindSpace Analytics Dashboard</h1>
-        </div>
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Analytics Dashboard{% endblock %}
+{% block page_subtitle %}{{ total_records }} students analyzed &mdash; here's what the data says.{% endblock %}
 
-        <!-- Floating Action Buttons -->
-        <div class="fab-group">
-            <a href="#charts" class="fab-btn" id="fab-charts" title="Jump to Visual Insights">📊</a>
-            <a href="#top" class="fab-btn" id="fab-top" title="Back to Top">↑</a>
-        </div>
+{% block top_actions %}
+<div class="controls">
+    <a href="{{ url_for('edit') }}" class="btn btn-outline">✏️ Edit Dataset</a>
+    <a href="{{ url_for('index') }}" class="btn btn-primary">➕ Upload New</a>
+</div>
+{% endblock %}
 
-        <!-- Stats Row (3-Column Grid) -->
-        <div class="stats">
-            <div class="stat-card">
-                <h3>📊 Avg Burnout</h3>
-                <p>{{ avg_burnout }}</p>
-            </div>
-            <div class="stat-card">
-                <h3>📊 Median Burnout</h3>
-                <p>{{ median_burnout }}</p>
-            </div>
-            <div class="stat-card">
-                <h3>📉 Std Deviation</h3>
-                <p>{{ std_burnout }}</p>
-            </div>
-            <div class="stat-card">
-                <h3>👥 Total Students</h3>
-                <p>{{ total_records }}</p>
-            </div>
-            <div class="stat-card">
-                <h3>⚠️ High Risk</h3>
-                <p>{{ high_risk_count }} <span class="stat-pct">({{ pct_high_risk }}%)</span></p>
-            </div>
-            <div class="stat-card">
-                <h3>💬 Avg Sentiment</h3>
-                <p>{{ avg_sentiment }}</p>
-            </div>
-        </div>
+{% block content %}
 
-        <!-- Data Overview (Accordion) -->
-        <div class="section">
-            <div class="section-header">
-                <h2>📋 Data Overview</h2>
-                <div style="display: flex; gap: 12px; align-items: center;">
-                    <button id="toggle-data" class="expand-btn">
-                        <span class="chevron">▼</span> <span id="btn-text">Expand Dataset</span>
-                    </button>
-                    <a href="#charts" class="btn-secondary btn-sm">Visualizations ↓</a>
-                </div>
-            </div>
+<!-- Stats Row -->
+<div class="stats-grid" style="margin-bottom:2.5rem">
+    <div class="card stat-card-inner">
+        <div class="stat-label">Avg Burnout</div>
+        <div class="stat-val" style="color: var(--accent-risk)">{{ avg_burnout }}</div>
+        <div class="stat-sub">out of 100</div>
+    </div>
+    <div class="card stat-card-inner">
+        <div class="stat-label">Median / StdDev</div>
+        <div class="stat-val" style="color: var(--accent-blue)">{{ median_burnout }}</div>
+        <div class="stat-sub">±{{ std_burnout }}</div>
+    </div>
+    <div class="card stat-card-inner">
+        <div class="stat-label">High-Risk Students</div>
+        <div class="stat-val" style="color: var(--accent-purple)">{{ high_risk_count }}</div>
+        <div class="stat-sub">({{ pct_high_risk }}% of cohort)</div>
+    </div>
+    <div class="card stat-card-inner">
+        <div class="stat-label">Avg Sentiment</div>
+        <div class="stat-val" style="color: var(--accent-emerald)">{{ avg_sentiment }}</div>
+        <div class="stat-sub">compound score</div>
+    </div>
+</div>
 
-            <div class="collapsible-wrapper">
-                <div id="data-accordion" class="collapsible-content">
-                    <div class="table-container">
-                        <div class="table-controls">
-                            <input type="text" id="search-input" placeholder="🔍 Search ID, feedback...">
-                            <select id="risk-filter">
-                                <option value="All">All</option>
-                                <option value="Low">🟢 Low</option>
-                                <option value="Medium">🟡 Medium</option>
-                                <option value="High">🔴 High</option>
-                            </select>
-                            <span class="row-counter">Showing <span id="visible-count">0</span> of <span id="total-count">0</span> students</span>
-                        </div>
-                        <table id="data-table">
-                            <thead>
-                                <tr>
-                                    {% for col in columns %}
-                                    <th>{{ col }}</th>
-                                    {% endfor %}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for row in data %}
-                                <tr data-index="{{ loop.index }}" data-risk="{{ row.risk|default('') }}">
-                                    {% for col in columns %}
-                                    <td>{{ row[col] }}</td>
-                                    {% endfor %}
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Visual Insights Section -->
-        <div class="section" id="charts">
-            <h2 style="text-align: center; margin-bottom: 40px; font-size: 2rem;">📊 Visual Insights & Deep Dives</h2>
-
-            <!-- Insight rows... (rest unchanged) -->
-            <!-- [Omitted for brevity - all existing insight rows remain] -->
-
-            <!-- 1 Burnout Distribution -->
-            <div class="insight-row">
-                <div class="insight-content">
-                    <h3>Burnout Score Distribution</h3>
-                    <p>Overview of how burnout scores are spread across the student population.</p>
-                    <div class="takeaway-box">
-                        <h4>Key Takeaways:</h4>
-                        <ul>
-                            <li>Identifies the group's "Average" burnout level.</li>
-                            <li>Visible peaks indicate common stress plateaus.</li>
-                        </ul>
-                    </div>
-                </div>
-                <div class="insight-visual">
-                    <img src="{{ url_for('static', filename='plots/score_hist.png') }}" alt="Burnout Score Histogram">
-                </div>
-            </div>
-
-            <!-- 2 Risk Proportions -->
-            <div class="insight-row">
-                <div class="insight-visual">
-                    <img src="{{ url_for('static', filename='plots/risk_pie.png') }}" alt="Risk Pie Chart">
-                </div>
-                <div class="insight-content">
-                    <h3>Burnout Risk Proportions</h3>
-                    <p>Categorical breakdown Low/Medium/High.</p>
-                    <div class="takeaway-box">
-                        <ul>
-                            <li>High risk % for priority support</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 3 Stress vs Burnout -->
-            <div class="insight-row">
-                <div class="insight-content">
-                    <h3>Stress vs Burnout</h3>
-                    <p>Average burnout by stress level.</p>
-                </div>
-                <div class="insight-visual">
-                    <img src="{{ url_for('static', filename='plots/stress_vs_burnout.png') }}" alt="Stress vs Burnout">
-                </div>
-            </div>
-
-            <!-- 4 Correlation Heatmap -->
-            <div class="insight-row">
-                <div class="insight-visual">
-                    <img src="{{ url_for('static', filename='plots/correlation_heatmap.png') }}" alt="Correlation Heatmap">
-                </div>
-                <div class="insight-content">
-                    <h3>Correlation Matrix</h3>
-                    <p>Feature relationships.</p>
-                </div>
-            </div>
-
-            <!-- 5 Sleep vs Burnout -->
-            <div class="insight-row">
-                <div class="insight-content">
-                    <h3>Sleep vs Burnout</h3>
-                    <p>Safety zones & clusters.</p>
-                </div>
-                <div class="insight-visual">
-                    <img src="{{ url_for('static', filename='plots/sleep_vs_burnout.png') }}" alt="Sleep vs Burnout">
-                </div>
-            </div>
-
-            <!-- 6 Boxplot Risk -->
-            <div class="insight-row">
-                <div class="insight-visual">
-                    <img src="{{ url_for('static', filename='plots/burnout_boxplot.png') }}" alt="Boxplot">
-                </div>
-                <div class="insight-content">
-                    <h3>Burnout by Risk Tier</h3>
-                    <p>Data spread per category.</p>
-                </div>
-            </div>
-
-            <!-- 7 Study vs Burnout -->
-            <div class="insight-row">
-                <div class="insight-content">
-                    <h3>Study Hours vs Burnout</h3>
-                    <p>Over-studying impact.</p>
-                </div>
-                <div class="insight-visual">
-                    <img src="{{ url_for('static', filename='plots/study_vs_burnout.png') }}" alt="Study vs Burnout">
-                </div>
-            </div>
-
-            <!-- 8 Stress vs Sleep -->
-            <div class="insight-row">
-                <div class="insight-visual">
-                    <img src="{{ url_for('static', filename='plots/stress_vs_sleep.png') }}" alt="Stress vs Sleep">
-                </div>
-                <div class="insight-content">
-                    <h3>Stress vs Sleep</h3>
-                    <p>Physiological impacts.</p>
-                </div>
-            </div>
-
-            <!-- 9 Sentiment Dist -->
-            <div class="insight-row">
-                <div class="insight-content">
-                    <h3>Sentiment Distribution</h3>
-                    <p>Feedback vibe analysis.</p>
-                </div>
-                <div class="insight-visual">
-                    <img src="{{ url_for('static', filename='plots/sentiment_dist.png') }}" alt="Sentiment Dist">
-                </div>
-            </div>
-
-            <!-- 10 Sentiment vs Burnout -->
-            <div class="insight-row">
-                <div class="insight-visual">
-                    <img src="{{ url_for('static', filename='plots/sentiment_vs_burnout.png') }}" alt="Sentiment vs Burnout">
-                </div>
-                <div class="insight-content">
-                    <h3>Sentiment vs Burnout</h3>
-                    <p>Happy High-Risk outliers.</p>
-                </div>
-            </div>
-
-        </div>
+<!-- Dataset Accordion -->
+<div class="card" style="margin-bottom: 2.5rem">
+    <div class="accordion-header" id="toggle-data">
+        <h3>📋 Student Records <span id="visible-counter" class="badge badge-medium" style="font-size:0.75rem"></span>
+        </h3>
+        <button class="expand-btn" aria-label="Toggle data view">
+            <span class="chevron">▼</span>
+            <span class="btn-text">Expand All</span>
+        </button>
     </div>
 
-    <script>
-        // Theme toggle
-        const toggle = document.getElementById('theme-toggle');
-        if (toggle) {
-            const saved = localStorage.getItem('theme') || 'light';
-            toggle.textContent = saved === 'dark' ? '☀️' : '🌙';
-            toggle.addEventListener('click', () => {
-                const current = document.documentElement.getAttribute('data-theme');
-                const next = current === 'dark' ? 'light' : 'dark';
-                document.documentElement.setAttribute('data-theme', next);
-                localStorage.setItem('theme', next);
-                toggle.textContent = next === 'dark' ? '☀️' : '🌙';
-            });
-        }
+    <div id="data-accordion" class="accordion-body">
+        <!-- Filters -->
+        <div class="table-filters">
+            <input type="text" id="search-input" class="filter-input" placeholder="🔍  Search feedback, score…">
+            <select id="risk-filter" class="filter-select">
+                <option value="All">All Risk Levels</option>
+                <option value="Low">🟢 Low</option>
+                <option value="Medium">🟡 Medium</option>
+                <option value="High">🔴 High</option>
+            </select>
+            <span class="row-counter">
+                Showing <strong id="visible-count">—</strong> of <strong id="total-count">—</strong>
+            </span>
+        </div>
 
-        // FAB scroll
-        const fabTop = document.getElementById('fab-top');
-        const fabCharts = document.getElementById('fab-charts');
-        const updateFABs = () => {
-            const hasScrolled = window.scrollY > 200;
-            fabTop?.classList.toggle('visible', hasScrolled);
-            fabCharts?.classList.toggle('visible', hasScrolled);
-        };
-        window.addEventListener('scroll', updateFABs);
-        updateFABs();
-        fabTop?.addEventListener('click', (e) => {
-            e.preventDefault();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+        <!-- Table -->
+        <div class="table-wrapper">
+            <table id="data-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        {% for col in columns %}
+                        <th>{{ col }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in data %}
+                    <tr data-row="{{ loop.index }}" data-risk="{{ row.risk|default('') }}">
+                        <td class="row-num">{{ loop.index }}</td>
+                        {% for col in columns %}
+                        <td>
+                            {%- if col == 'risk' -%}
+                            <span class="badge badge-{{ row[col]|lower|default('') }}">{{ row[col] }}</span>
+                            {%- else -%}
+                            {{ row[col] }}
+                            {%- endif -%}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Section -->
+<h2 id="charts" style="margin-bottom: 2rem; font-size:1.4rem; font-weight:600;">📊 Visual Insights <span
+        style="font-weight:300; color: var(--text-secondary); font-size:0.95rem">(scroll for all 10 charts)</span></h2>
+
+{% macro chart_card(title, desc, takeaway, img_url, img_alt, reverse=false) %}
+<div class="card insight-row {% if reverse %}reverse{% endif %}" style="margin-bottom: 2rem">
+    <div class="insight-text-col">
+        <h3 class="insight-title">{{ title }}</h3>
+        <p class="insight-desc">{{ desc }}</p>
+        <div class="takeaway-box">
+            <strong>Key Takeaway</strong>
+            <p>{{ takeaway }}</p>
+        </div>
+    </div>
+    <div class="insight-visual-col">
+        <img src="{{ img_url }}" alt="{{ img_alt }}" loading="lazy">
+    </div>
+</div>
+{% endmacro %}
+
+{{ chart_card(
+"Burnout Score Distribution",
+"How burnout scores are spread across the whole student population. Each bar represents a range of scores.",
+"Peaks clustered above 60 indicate that a significant portion of this cohort is under chronic pressure — intervention at
+the mid-range can prevent escalation.",
+url_for('static', filename='plots/score_hist.png'), "Burnout Histogram"
+) }}
+
+{{ chart_card(
+"Burnout Risk Proportions",
+"Categorical slice of the cohort: what share falls into Low, Medium, and High burnout risk.",
+"If High-risk exceeds 25%, the cohort needs structural support — not just individual counselling.",
+url_for('static', filename='plots/risk_pie.png'), "Risk Pie", reverse=true
+) }}
+
+{{ chart_card(
+"Stress Level vs Avg Burnout",
+"Average burnout score at each self-reported stress level (1–10). Bars show how burnout tracks stress.",
+"The jump from stress level 7 to 8 is typically steeper — that's where sleep deprivation compounds the load.",
+url_for('static', filename='plots/stress_vs_burnout.png'), "Stress vs Burnout"
+) }}
+
+{{ chart_card(
+"Feature Correlation Heatmap",
+"Strength and direction of linear relationships between sleep, study hours, stress, and burnout.",
+"High positive correlations (study↔burnout, stress↔burnout) tell you which levers to pull first.",
+url_for('static', filename='plots/correlation_heatmap.png'), "Correlation Heatmap", reverse=true
+) }}
+
+{{ chart_card(
+"Sleep Hours vs Burnout Score",
+"Each dot is a student. Colour shows risk tier (green = Low, blue = Medium, red = High).",
+"Students sleeping under 5 hours almost universally appear in the red zone — sleep is the clearest protective factor.",
+url_for('static', filename='plots/sleep_vs_burnout.png'), "Sleep vs Burnout"
+) }}
+
+{{ chart_card(
+"Burnout Score by Risk Tier",
+"Box-and-whisker plot showing full score spread within each risk category.",
+"Whiskers stretching far inside the 'Medium' box mean uncertain cases — those need closer monitoring.",
+url_for('static', filename='plots/burnout_boxplot.png'), "Burnout Boxplot", reverse=true
+) }}
+
+{{ chart_card(
+"Study Hours vs Burnout Score",
+"Does studying more always mean more burnout? This scatter reveals the relationship.",
+"At high study loads (10+ hrs/day) burnout is nearly guaranteed unless sleep is preserved. There's no substitute.",
+url_for('static', filename='plots/study_vs_burnout.png'), "Study vs Burnout"
+) }}
+
+{{ chart_card(
+"Stress Level vs Sleep Hours",
+"Pattern between how stressed a student is and how much sleep they're actually getting.",
+"The downward trend confirms the inverse relationship — the more stressed, the less sleep, creating a feedback loop.",
+url_for('static', filename='plots/stress_vs_sleep.png'), "Stress vs Sleep", reverse=true
+) }}
+
+{{ chart_card(
+"Sentiment Score Distribution",
+"VADER compound score from student feedback — ranges from -1 (very negative) to +1 (very positive).",
+"A distribution skewed negative despite okay burnout scores signals hidden distress worth investigating qualitatively.",
+url_for('static', filename='plots/sentiment_dist.png'), "Sentiment Distribution"
+) }}
+
+{{ chart_card(
+"Sentiment Score vs Burnout Score",
+"Does how students write about their experience match how burned-out they actually are?",
+"Outliers (positive sentiment, high burnout) are potential maskers — students who hide distress in their language.",
+url_for('static', filename='plots/sentiment_vs_burnout.png'), "Sentiment vs Burnout", reverse=true
+) }}
+
+<!-- FAB Buttons -->
+<div class="fab-group">
+    <a href="#charts" class="fab-btn" id="fab-charts" title="Jump to Charts">📊</a>
+    <a href="#top" class="fab-btn" id="fab-top" title="Back to Top">↑</a>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // FAB scroll
+    const fabTop = document.getElementById('fab-top');
+    const fabCharts = document.getElementById('fab-charts');
+    const updateFABs = () => {
+        const s = window.scrollY > 300;
+        fabTop?.classList.toggle('visible', s);
+        fabCharts?.classList.toggle('visible', s);
+    };
+    window.addEventListener('scroll', updateFABs);
+    updateFABs();
+    fabTop?.addEventListener('click', e => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+    fabCharts?.addEventListener('click', e => { e.preventDefault(); document.getElementById('charts').scrollIntoView({ behavior: 'smooth' }); });
+
+    // Accordion
+    const toggleBtn = document.getElementById('toggle-data');
+    const accordion = document.getElementById('data-accordion');
+    const btnText = toggleBtn?.querySelector('.btn-text');
+    const chevron = toggleBtn?.querySelector('.chevron');
+    toggleBtn?.addEventListener('click', () => {
+        const open = accordion.classList.toggle('open');
+        btnText.textContent = open ? 'Collapse' : 'Expand All';
+        chevron.style.transform = open ? 'rotate(180deg)' : '';
+        if (open) setTimeout(initFilters, 50);
+    });
+
+    // Filter + Search
+    let allRows = [];
+    function initFilters() {
+        allRows = Array.from(document.querySelectorAll('#data-table tbody tr'));
+        document.getElementById('total-count').textContent = allRows.length;
+        filterTable();
+    }
+
+    function filterTable() {
+        const q = (document.getElementById('search-input').value || '').toLowerCase().trim();
+        const risk = document.getElementById('risk-filter').value;
+        let visible = 0;
+        allRows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            const riskMatch = risk === 'All' || row.dataset.risk === risk;
+            const searchMatch = !q || text.includes(q) || row.dataset.row.includes(q);
+            const show = riskMatch && searchMatch;
+            row.style.display = show ? '' : 'none';
+            if (show) visible++;
         });
-        fabCharts?.addEventListener('click', (e) => {
-            e.preventDefault();
-            document.getElementById('charts').scrollIntoView({ behavior: 'smooth' });
-        });
+        document.getElementById('visible-count').textContent = visible;
+        document.getElementById('visible-counter').textContent = `${visible} shown`;
+    }
 
-        // Accordion
-        const toggleData = document.getElementById('toggle-data');
-        const dataAccordion = document.getElementById('data-accordion');
-        const btnText = document.getElementById('btn-text');
-        toggleData?.addEventListener('click', () => {
-            const isExpanded = dataAccordion.classList.toggle('expanded');
-            toggleData.classList.toggle('active');
-            btnText.textContent = isExpanded ? 'Hide Dataset' : 'Expand Dataset';
-            setTimeout(() => filterTable(), 300);
-        });
-
-        // Table Filters - improved for sorting visible rows
-        let allRows = [];
-        function initFilters() {
-            const tbody = document.querySelector('#data-table tbody');
-            allRows = Array.from(tbody.querySelectorAll('tr'));
-            allRows.forEach((row, index) => {
-                row.dataset.index = (index + 1).toString();
-            });
-            document.getElementById('total-count').textContent = allRows.length;
-            document.getElementById('visible-count').textContent = allRows.length;
-        }
-
-        function filterTable() {
-            const searchTerm = document.getElementById('search-input').value.toLowerCase().trim();
-            const riskVal = document.getElementById('risk-filter').value;
-            
-            let visibleCount = 0;
-            const visibleRows = [];
-            
-            allRows.forEach(row => {
-                const indexStr = row.dataset.index;
-                const risk = row.dataset.risk;
-                const cells = row.children;
-                let matchesSearch = !searchTerm;
-                
-                if (searchTerm) {
-                    let rowText = Array.from(cells).map(cell => cell.textContent.toLowerCase()).join(' ');
-                    matchesSearch = rowText.includes(searchTerm) || indexStr.includes(searchTerm);
-                }
-                
-                const matchesRisk = riskVal === 'All' || risk === riskVal;
-                
-                if (matchesSearch && matchesRisk) {
-                    row.style.display = '';
-                    visibleRows.push(row);
-                    visibleCount++;
-                } else {
-                    row.style.display = 'none';
-                }
-            });
-            
-            // Sort visible rows by risk then index
-            visibleRows.sort((a, b) => {
-                const riskOrder = { 'Low': 1, 'Medium': 2, 'High': 3 };
-                const riskA = riskOrder[a.dataset.risk] || 4;
-                const riskB = riskOrder[b.dataset.risk] || 4;
-                if (riskA !== riskB) return riskA - riskB;
-                return parseInt(a.dataset.index) - parseInt(b.dataset.index);
-            });
-            
-            // Re-append sorted visible rows to tbody
-            const tbody = document.querySelector('#data-table tbody');
-            visibleRows.forEach(row => tbody.appendChild(row));
-            
-            document.getElementById('visible-count').textContent = visibleCount;
-        }
-
-        // Events
-        document.getElementById('search-input').addEventListener('input', filterTable);
-        document.getElementById('risk-filter').addEventListener('change', filterTable);
-        document.addEventListener('DOMContentLoaded', initFilters);
-    </script>
-</body>
-</html>
+    document.getElementById('search-input')?.addEventListener('input', filterTable);
+    document.getElementById('risk-filter')?.addEventListener('change', filterTable);
+</script>
+{% endblock %}

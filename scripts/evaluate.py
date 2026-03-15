@@ -45,18 +45,41 @@ def plot_confusion_matrix(y_test, y_pred, class_names=None):
     plt.ylabel('Actual Label')
     plt.xlabel('Predicted Label')
     plt.tight_layout()
-    plt.savefig('confusion_matrix.png', dpi=150)
+    plot_path = '../static/plots/confusion_matrix.png'
+    os.makedirs(os.path.dirname(plot_path), exist_ok=True)
+    plt.savefig(plot_path, dpi=150)
     plt.show()
-    print("Confusion matrix saved as confusion_matrix.png")
+    print(f"Confusion matrix saved as {plot_path}")
 
 
 # --- Run evaluation ---
 if __name__ == "__main__":
-    # Replace these with your actual model outputs
-    from your_model import model, X_test, y_test  # adjust import
+    import pickle
+    import os
     
-    y_pred = model.predict(X_test)
-    y_prob = model.predict_proba(X_test)  # remove if model has no predict_proba
+    model_dir = '../models'
+    model_path = os.path.join(model_dir, 'model.pkl')
+    data_path = os.path.join(model_dir, 'eval_data.pkl')
     
-    class_names = ["Class 0", "Class 1"]  # replace with your actual labels
-    evaluate_model(y_test, y_pred, y_prob, class_names)
+    # Check if model exists
+    if not os.path.exists(model_path) or not os.path.exists(data_path):
+        print(f"Error: {model_path} or {data_path} not found. Run train_model.py first.")
+    else:
+        with open(model_path, 'rb') as f:
+            model = pickle.load(f)
+        
+        with open(data_path, 'rb') as f:
+            eval_data = pickle.load(f)
+            
+        X_test = eval_data['X_test']
+        y_test = eval_data['y_test']
+        class_names = eval_data['class_names']
+        
+        y_pred = model.predict(X_test)
+        
+        # Check if model has predict_proba for ROC-AUC
+        y_prob = None
+        if hasattr(model, 'predict_proba'):
+            y_prob = model.predict_proba(X_test)
+        
+        evaluate_model(y_test, y_pred, y_prob, class_names)

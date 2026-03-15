@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MindSpace - {% block title %}{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        (function () {
+            const saved = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', saved);
+        })();
+    </script>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="brand">
+                <span>🧠 MindSpace</span>
+            </div>
+
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="{{ url_for('index') }}" class="nav-link {% if active_page == 'index' %}active{% endif %}">
+                        🏠 Home
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('dashboard') }}"
+                        class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">
+                        📊 Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ url_for('evaluate') }}"
+                        class="nav-link {% if active_page == 'evaluate' %}active{% endif %}">
+                        🎯 Evaluation
+                    </a>
+                </li>
+            </ul>
+
+            <div class="sidebar-footer">
+                <div class="controls">
+                    <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle dark mode">🌙</button>
+                    <span style="font-size: 0.8rem; color: var(--text-secondary)">v1.2 Restructured</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="page-title">
+                    <h1>{% block page_title %}{% endblock %}</h1>
+                    <p>{% block page_subtitle %}{% endblock %}</p>
+                </div>
+                {% block top_actions %}{% endblock %}
+            </header>
+
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <script>
+        const toggle = document.getElementById('theme-toggle');
+        if (toggle) {
+            const saved = localStorage.getItem('theme') || 'light';
+            toggle.textContent = saved === 'dark' ? '☀️' : '🌙';
+            toggle.addEventListener('click', () => {
+                const current = document.documentElement.getAttribute('data-theme');
+                const next = current === 'dark' ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', next);
+                localStorage.setItem('theme', next);
+                toggle.textContent = next === 'dark' ? '☀️' : '🌙';
+            });
+        }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>
