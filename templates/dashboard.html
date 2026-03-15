@@ -12,6 +12,17 @@
     </script>
 </head>
 <body>
+
+    <nav class="breadcrumb-bar">
+        {% for crumb in breadcrumbs %}
+            {% if not loop.last %}
+                <a href="{{ crumb.url }}">{{ crumb.name }}</a> <span> > </span>
+            {% else %}
+                <span class="active">{{ crumb.name }}</span>
+            {% endif %}
+        {% endfor %}
+    </nav>
+
     <nav class="navbar">
         <span class="navbar-brand">🧠 MindSpace</span>
         <div class="navbar-links">
@@ -25,6 +36,19 @@
     <div class="container">
         <div class="dashboard-header" id="top">
             <h1>📈 MindSpace Analytics Dashboard</h1>
+        </div>
+
+        <!-- ===== COMPARE SECTION ===== -->
+        <div class="section">
+            <h2>📊 Compare With Another Dataset</h2>
+            <p>Upload a second dataset to compare burnout levels and graphs side by side.</p>
+            <form action="/upload_b" method="post" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label>Dataset B (e.g. Finals)</label>
+                    <input type="file" name="file" accept=".csv" required>
+                </div>
+                <button type="submit" class="btn-primary">⚡ Compare Datasets</button>
+            </form>
         </div>
 
         <!-- Floating Action Buttons -->

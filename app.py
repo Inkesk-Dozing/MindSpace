@@ -22,6 +22,22 @@ app.config['SECRET_KEY'] = 'mindspace_secret_key'
 
 data_df = None
 corr_matrix = None
+data_df_b = None  
+
+@app.context_processor
+def inject_breadcrumbs():
+    from flask import request
+    breadcrumbs = [{'name': '🏠 Home', 'url': '/'}]
+    if request.endpoint == 'dashboard':
+        breadcrumbs.append({'name': 'Dashboard', 'url': '/dashboard'})
+    elif request.endpoint == 'edit':
+        breadcrumbs.append({'name': 'Dashboard', 'url': '/dashboard'})
+        breadcrumbs.append({'name': 'Edit Dataset', 'url': '/edit'})
+    elif request.endpoint == 'compare':
+        breadcrumbs.append({'name': 'Dashboard', 'url': '/dashboard'})
+        breadcrumbs.append({'name': 'Compare', 'url': '/compare'})
+    return dict(breadcrumbs=breadcrumbs)
+
 
 @app.route('/')
 def index():
@@ -30,6 +46,9 @@ def index():
 
 @app.route('/reset')
 def reset():
+    global data_df, data_df_b  
+    data_df = None              
+    data_df_b = None            
     session.pop('history', None)
     return redirect(url_for('index'))
 
@@ -108,6 +127,123 @@ def process_data():
     
     # Similar for other plots...
     # (all plot code here but shortened for response)
+    
+# NEW - shared processing for second dataset
+def _process(df):
+    numeric_cols = ['sleep_hours', 'study_hours', 'stress_level']
+    for col in numeric_cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+            df[col] = df[col].apply(lambda x: max(x, 0))
+    df['burnout_score'] = df.apply(
+        lambda row: ((row.get('study_hours', 0) / row.get('sleep_hours', 1) if row.get('sleep_hours', 0) > 0 else 0) * row.get('stress_level', 0)) * 10,
+        axis=1
+    )
+    df['burnout_score'] = np.clip(df['burnout_score'], 0, 100)
+    df['risk'] = pd.cut(df['burnout_score'], bins=[-1, 33, 66, 101], labels=['Low', 'Medium', 'High'])
+    sia = SentimentIntensityAnalyzer()
+    if 'feedback' in df.columns:
+        df['sentiment_score'] = df['feedback'].apply(lambda x: sia.polarity_scores(str(x))['compound'])
+    else:
+        df['sentiment_score'] = 0
+
+# NEW - upload second dataset from dashboard
+@app.route('/upload_b', methods=['POST'])
+def upload_b():
+    global data_df_b
+    if 'file' not in request.files:
+        return redirect(url_for('dashboard'))
+    file = request.files['file']
+    if file and file.filename.endswith('.csv'):
+        try:
+            data_df_b = pd.read_csv(file)
+            _process(data_df_b)
+            return redirect(url_for('compare'))
+        except Exception as e:
+            print(f"Error: {e}")
+    return redirect(url_for('dashboard'))
+
+# NEW - upload both datasets from homepage
+@app.route('/upload_compare', methods=['POST'])
+def upload_compare():
+    global data_df, data_df_b
+    if 'file_a' not in request.files or 'file_b' not in request.files:
+        return redirect(url_for('index'))
+    file_a = request.files['file_a']
+    file_b = request.files['file_b']
+    if file_a and file_a.filename.endswith('.csv') and file_b and file_b.filename.endswith('.csv'):
+        try:
+            data_df = pd.read_csv(file_a)
+            _process(data_df)
+            data_df_b = pd.read_csv(file_b)
+            _process(data_df_b)
+            return redirect(url_for('compare'))
+        except Exception as e:
+            print(f"Error: {e}")
+    return redirect(url_for('index'))
+
+# NEW - compare two datasets with graphs
+@app.route('/compare')
+def compare():
+    global data_df, data_df_b
+    if data_df is None or data_df_b is None:
+        return redirect(url_for('index'))
+
+    plot_dir = os.path.join(app.static_folder, 'plots')
+    os.makedirs(plot_dir, exist_ok=True)
+
+    plt.figure(figsize=(6, 4), dpi=150)
+    plt.hist(data_df['burnout_score'], bins=20, color='#3b82f6', edgecolor='white', alpha=0.8)
+    plt.title('Dataset A - Burnout Distribution', fontsize=12)
+    plt.xlabel('Burnout Score')
+    plt.ylabel('Students')
+    plt.tight_layout()
+    plt.savefig(os.path.join(plot_dir, 'compare_hist_a.png'))
+    plt.close('all')
+
+    plt.figure(figsize=(6, 4), dpi=150)
+    plt.hist(data_df_b['burnout_score'], bins=20, color='#ec4899', edgecolor='white', alpha=0.8)
+    plt.title('Dataset B - Burnout Distribution', fontsize=12)
+    plt.xlabel('Burnout Score')
+    plt.ylabel('Students')
+    plt.tight_layout()
+    plt.savefig(os.path.join(plot_dir, 'compare_hist_b.png'))
+    plt.close('all')
+
+    risk_a = data_df['risk'].value_counts()
+    plt.figure(figsize=(5, 5), dpi=150)
+    if not risk_a.empty:
+        risk_a.plot.pie(autopct='%1.1f%%', colors=["#e28e0f", "#ef4444", "#3b82f6"],
+                        startangle=140, textprops={'fontsize': 9, 'color': 'white', 'weight': 'bold'})
+    plt.title('Dataset A - Risk Categories', fontsize=12)
+    plt.ylabel('')
+    plt.tight_layout()
+    plt.savefig(os.path.join(plot_dir, 'compare_pie_a.png'))
+    plt.close('all')
+
+    risk_b = data_df_b['risk'].value_counts()
+    plt.figure(figsize=(5, 5), dpi=150)
+    if not risk_b.empty:
+        risk_b.plot.pie(autopct='%1.1f%%', colors=["#e28e0f", "#ef4444", "#3b82f6"],
+                        startangle=140, textprops={'fontsize': 9, 'color': 'white', 'weight': 'bold'})
+    plt.title('Dataset B - Risk Categories', fontsize=12)
+    plt.ylabel('')
+    plt.tight_layout()
+    plt.savefig(os.path.join(plot_dir, 'compare_pie_b.png'))
+    plt.close('all')
+
+    def get_stats(df):
+        risk_counts = df['risk'].value_counts().to_dict()
+        return {
+            'avg_burnout': round(df['burnout_score'].mean(), 1),
+            'total_records': len(df),
+            'high_risk_count': int((df['risk'] == 'High').sum()),
+            'risk_data': [risk_counts.get('Low', 0), risk_counts.get('Medium', 0), risk_counts.get('High', 0)],
+        }
+
+    return render_template('compare.html',
+                           stats_a=get_stats(data_df),
+                           stats_b=get_stats(data_df_b))
 
 @app.route('/dashboard')
 def dashboard():

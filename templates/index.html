@@ -16,6 +16,17 @@
 </head>
 
 <body>
+
+        <nav class="breadcrumb-bar">
+        {% for crumb in breadcrumbs %}
+            {% if not loop.last %}
+                <a href="{{ crumb.url }}">{{ crumb.name }}</a> <span> > </span>
+            {% else %}
+                <span class="active">{{ crumb.name }}</span>
+            {% endif %}
+        {% endfor %}
+    </nav>
+
     <nav class="navbar">
         <span class="navbar-brand">🧠 MindSpace</span>
         <button id="theme-toggle" class="theme-btn" aria-label="Toggle dark mode">🌙</button>
@@ -67,6 +78,23 @@
                     <input type="file" aria-label="Dataset Upload" id="file-upload" name="file" accept=".csv" required>
                 </div>
                 <button type="submit" class="btn-primary">🚀 Analyze Data</button>
+            </form>
+        </section>
+
+        <!-- ===== COMPARE SECTION ===== -->
+        <section class="upload-section">
+            <h2>📊 Compare Two Datasets</h2>
+            <p>Upload two CSV datasets to compare burnout levels, risk distribution and graphs side by side.</p>
+            <form action="/upload_compare" method="post" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="file-a">Dataset A (e.g. Mid-terms)</label>
+                    <input type="file" id="file-a" name="file_a" accept=".csv" required>
+                </div>
+                <div class="form-group">
+                    <label for="file-b">Dataset B (e.g. Finals)</label>
+                    <input type="file" id="file-b" name="file_b" accept=".csv" required>
+                </div>
+                <button type="submit" class="btn-primary">⚡ Compare Datasets</button>
             </form>
         </section>
 

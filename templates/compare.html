@@ -21,17 +21,15 @@
         <button id="theme-toggle" class="theme-btn" aria-label="Toggle dark mode">🌙</button>
     </nav>
 
+    <!-- NEW - breadcrumb using backend context processor -->
     <nav class="breadcrumb-bar">
-        <a href="{{ url_for('index') }}">🏠 Home</a>
-        {% if request.endpoint == 'dashboard' %}
-        <span> > </span><span class="active">Dashboard</span>
-        {% elif request.endpoint == 'edit' %}
-        <span> > </span><a href="{{ url_for('dashboard') }}">Dashboard</a>
-        <span> > </span><span class="active">Edit Dataset</span>
-        {% elif request.endpoint == 'compare' %}
-        <span> > </span><a href="{{ url_for('dashboard') }}">Dashboard</a>
-        <span> > </span><span class="active">Compare</span>
-        {% endif %}
+        {% for crumb in breadcrumbs %}
+            {% if not loop.last %}
+                <a href="{{ crumb.url }}">{{ crumb.name }}</a> <span> > </span>
+            {% else %}
+                <span class="active">{{ crumb.name }}</span>
+            {% endif %}
+        {% endfor %}
     </nav>
 
     <div class="container">
@@ -41,6 +39,22 @@
                 <a href="{{ url_for('dashboard') }}" class="nav-link">← Back to Dashboard</a>
                 <a href="{{ url_for('index') }}" class="nav-link">🏠 Home</a>
             </div>
+        </div>
+
+        <!-- NEW - Change Datasets form -->
+        <div class="section">
+            <h2>🔄 Change Datasets</h2>
+            <form action="/upload_compare" method="post" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label>Dataset A (e.g. Mid-terms)</label>
+                    <input type="file" name="file_a" accept=".csv" required>
+                </div>
+                <div class="form-group">
+                    <label>Dataset B (e.g. Finals)</label>
+                    <input type="file" name="file_b" accept=".csv" required>
+                </div>
+                <button type="submit" class="btn-primary">⚡ Update Comparison</button>
+            </form>
         </div>
 
         <div class="compare-grid">
@@ -88,7 +102,97 @@
                 </div>
             </div>
         </div>
+
+        <!-- NEW - Graphs side by side with expand buttons -->
+        <h2>📈 Visual Comparison</h2>
+
+        <div class="insight-row">
+            <div class="insight-content">
+                <h3>Dataset A - Burnout Distribution</h3>
+                <div class="takeaway-box">
+                    <h4>What is this?</h4>
+                    <ul>
+                        <li>Shows how burnout scores are spread across students in Dataset A.</li>
+                        <li>Peaks indicate common stress levels in this period.</li>
+                        <li>Higher bars on the right mean more burned-out students.</li>
+                    </ul>
+                </div>
+                <button class="expand-btn" onclick="toggleInfo('hist-a')" style="margin-top: 12px;">
+                    <span class="chevron">▼</span> <span>Show Graph</span>
+                </button>
+                <div id="hist-a" class="collapsible-content">
+                    <img src="{{ url_for('static', filename='plots/compare_hist_a.png') }}" style="width:100%; border-radius:8px; margin-top:12px;">
+                </div>
+            </div>
+            <div class="insight-content">
+                <h3>Dataset B - Burnout Distribution</h3>
+                <div class="takeaway-box">
+                    <h4>What is this?</h4>
+                    <ul>
+                        <li>Shows how burnout scores are spread across students in Dataset B.</li>
+                        <li>Compare with Dataset A to see if burnout increased or decreased.</li>
+                        <li>Shift in peaks shows change in stress patterns between periods.</li>
+                    </ul>
+                </div>
+                <button class="expand-btn" onclick="toggleInfo('hist-b')" style="margin-top: 12px;">
+                    <span class="chevron">▼</span> <span>Show Graph</span>
+                </button>
+                <div id="hist-b" class="collapsible-content">
+                    <img src="{{ url_for('static', filename='plots/compare_hist_b.png') }}" style="width:100%; border-radius:8px; margin-top:12px;">
+                </div>
+            </div>
+        </div>
+
+        <div class="insight-row">
+            <div class="insight-content">
+                <h3>Dataset A - Risk Categories</h3>
+                <div class="takeaway-box">
+                    <h4>What is this?</h4>
+                    <ul>
+                        <li>Breakdown of students into Low, Medium, and High burnout risk.</li>
+                        <li>A larger red slice means more students are at high risk.</li>
+                        <li>Use this to prioritize support and counseling efforts.</li>
+                    </ul>
+                </div>
+                <button class="expand-btn" onclick="toggleInfo('pie-a')" style="margin-top: 12px;">
+                    <span class="chevron">▼</span> <span>Show Graph</span>
+                </button>
+                <div id="pie-a" class="collapsible-content">
+                    <img src="{{ url_for('static', filename='plots/compare_pie_a.png') }}" style="width:100%; border-radius:8px; margin-top:12px;">
+                </div>
+            </div>
+            <div class="insight-content">
+                <h3>Dataset B - Risk Categories</h3>
+                <div class="takeaway-box">
+                    <h4>What is this?</h4>
+                    <ul>
+                        <li>Breakdown of students into Low, Medium, and High burnout risk.</li>
+                        <li>Compare with Dataset A to see how risk distribution shifted.</li>
+                        <li>Growing red slice signals worsening burnout over time.</li>
+                    </ul>
+                </div>
+                <button class="expand-btn" onclick="toggleInfo('pie-b')" style="margin-top: 12px;">
+                    <span class="chevron">▼</span> <span>Show Graph</span>
+                </button>
+                <div id="pie-b" class="collapsible-content">
+                    <img src="{{ url_for('static', filename='plots/compare_pie_b.png') }}" style="width:100%; border-radius:8px; margin-top:12px;">
+                </div>
+            </div>
+        </div>
+
     </div>
+
+    <!-- NEW - toggleInfo function -->
+    <script>
+        function toggleInfo(id) {
+            const el = document.getElementById(id);
+            const btn = el.previousElementSibling;
+            const isExpanded = el.classList.toggle('expanded');
+            btn.classList.toggle('active', isExpanded);
+            btn.querySelector('span:last-child').textContent = isExpanded ? 'Hide Graph' : 'Show Graph';
+        }
+    </script>
+
     <script>
         /* Dark mode toggle — null-safe */
         const toggle = document.getElementById('theme-toggle');
