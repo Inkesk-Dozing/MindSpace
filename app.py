@@ -34,6 +34,9 @@ def index():
 
 @app.route('/reset')
 def reset():
+    global data_df, data_df_b  
+    data_df = None              
+    data_df_b = None            
     session.pop('history', None)
     return redirect(url_for('index'))
 
