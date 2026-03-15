@@ -353,3 +353,24 @@ For questions, suggestions, or collaborations, please reach out:
   Made with ❤️ for student well-being<br>
   🧠 MindSpace - Understanding Student Burnout
 </p>
+
+
+## 📊 Evaluation Metrics
+
+We evaluated the model using the following metrics suited to our dataset:
+
+| Metric    | Score  |
+|-----------|--------|
+| Accuracy  | 0.XX   |
+| Precision | 0.XX   |
+| Recall    | 0.XX   |
+| F1 Score  | 0.XX   |
+| ROC-AUC   | 0.XX   |
+
+> **Why these metrics?**  
+> F1-Score is our primary metric due to potential class imbalance.  
+> Precision & Recall give insight into false positives/negatives.  
+> ROC-AUC measures overall model discriminability.
+
+### Confusion Matrix
+![Confusion Matrix](confusion_matrix.png)
