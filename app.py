@@ -70,12 +70,76 @@ def upload():
                 process_data()
                 os.makedirs('data', exist_ok=True)
                 data_df.to_csv('data/updated_sample.csv', index=False)
+                flash(f"Successfully uploaded {file.filename}. {len(data_df)} records processed.", "success")
                 return redirect(url_for('dashboard'))
             except Exception as e:
-                print(f"Error reading CSV: {e}")
+                flash(f"Error processing CSV: {str(e)}", "danger")
                 return redirect(url_for('index'))
+        else:
+            flash("Invalid file format. Please upload a CSV file.", "danger")
     return redirect(url_for('index'))
 
+
+def _auto_train():
+    global data_df, eval_metrics
+    if data_df is None:
+        return
+
+    from sklearn.model_selection import train_test_split
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
+
+    features = ['sleep_hours', 'study_hours', 'stress_level']
+    if not all(col in data_df.columns for col in features) or 'risk' not in data_df.columns:
+        return
+
+    df_ml = data_df.dropna(subset=features + ['risk'])
+    if len(df_ml) < 10:
+        return
+
+    X = df_ml[features]
+    y = df_ml['risk']
+    
+    # Needs to be explicitly mapped for sklearn multi-class metrics
+    class_mapping = {'Low': 0, 'Medium': 1, 'High': 2}
+    y_encoded = y.map(class_mapping)
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
+    
+    model = RandomForestClassifier(n_estimators=100, random_state=42, class_weight='balanced')
+    model.fit(X_train, y_train)
+
+    y_pred = model.predict(X_test)
+    y_prob = model.predict_proba(X_test)
+
+    cm = confusion_matrix(y_test, y_pred, labels=[0, 1, 2]).tolist()
+    
+    from sklearn.metrics import classification_report
+    report = classification_report(y_test, y_pred, target_names=['Low', 'Medium', 'High'], output_dict=True, zero_division=0)
+
+    # Save cm plot
+    plot_dir = os.path.join(app.static_folder, 'plots')
+    os.makedirs(plot_dir, exist_ok=True)
+    plt.figure(figsize=(6, 5))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['Low', 'Medium', 'High'], yticklabels=['Low', 'Medium', 'High'])
+    plt.title('Confusion Matrix')
+    plt.ylabel('Actual')
+    plt.xlabel('Predicted')
+    plt.tight_layout()
+    plt.savefig(os.path.join(plot_dir, 'confusion_matrix.png'))
+    plt.close('all')
+
+    eval_metrics = {
+        'accuracy': accuracy_score(y_test, y_pred),
+        'precision': round(precision_score(y_test, y_pred, average='weighted', zero_division=0), 3),
+        'recall': round(recall_score(y_test, y_pred, average='weighted', zero_division=0), 3),
+        'f1': round(f1_score(y_test, y_pred, average='weighted', zero_division=0), 3),
+        'roc_auc': round(roc_auc_score(y_test, y_prob, multi_class='ovr'), 3),
+        'confusion_matrix': cm,
+        'class_names': ['Low', 'Medium', 'High'],
+        'n_test': len(y_test),
+        'report': report
+    }
 
 def process_data():
     global data_df, corr_matrix, eval_metrics
@@ -84,11 +148,29 @@ def process_data():
     plot_dir = os.path.join(app.static_folder, 'plots')
     os.makedirs(plot_dir, exist_ok=True)
 
+    # Fuzzy column mapping
+    col_map = {
+        'sleep_hours': ['sleep_hours', 'sleep hours', 'sleep', 'sleeping_hours'],
+        'study_hours': ['study_hours', 'study hours', 'study', 'studying_hours'],
+        'stress_level': ['stress_level', 'stress level', 'stress', 'stress_score']
+    }
+    
+    actual_map = {}
+    for target, variations in col_map.items():
+        found = False
+        for col in data_df.columns:
+            if col.lower().strip() in variations:
+                actual_map[target] = col
+                found = True
+                break
+        if not found:
+            actual_map[target] = target # Default to target name
+
     numeric_cols = ['sleep_hours', 'study_hours', 'stress_level']
-    for col in numeric_cols:
-        if col in data_df.columns:
-            data_df[col] = pd.to_numeric(data_df[col], errors='coerce').fillna(0)
-            data_df[col] = data_df[col].apply(lambda x: max(x, 0))
+    for target, actual in actual_map.items():
+        if actual in data_df.columns:
+            data_df[target] = pd.to_numeric(data_df[actual], errors='coerce').fillna(0)
+            data_df[target] = data_df[target].apply(lambda x: max(x, 0))
 
     data_df['burnout_score'] = data_df.apply(
         lambda row: ((row.get('study_hours', 0) / row.get('sleep_hours', 1)
@@ -188,40 +270,47 @@ def process_data():
     # 5. Sleep vs Burnout scatter
     if 'sleep_hours' in data_df.columns:
         fig, ax = _dark_fig()
-        scatter_colors = data_df['risk'].map({'Low': '#28c76f', 'Medium': '#4facfe', 'High': '#ff4b5c'})
-        ax.scatter(data_df['sleep_hours'], data_df['burnout_score'],
-                   c=scatter_colors, alpha=0.7, edgecolors=dark_bg, linewidths=0.5, s=60)
+        sns.scatterplot(
+            data=data_df, x='sleep_hours', y='burnout_score',
+            hue='risk' if 'risk' in data_df.columns else None,
+            palette={'Low': '#28c76f', 'Medium': '#4facfe', 'High': '#ff4b5c'} if 'risk' in data_df.columns else None,
+            ax=ax, s=60, alpha=0.8, edgecolor=dark_bg
+        )
         ax.set_title('Sleep Hours vs Burnout Score')
         ax.set_xlabel('Sleep Hours')
         ax.set_ylabel('Burnout Score')
+        ax.legend(facecolor=dark_bg, labelcolor=text_col, edgecolor=grid_col)
         plt.tight_layout()
         plt.savefig(os.path.join(plot_dir, 'sleep_vs_burnout.png'))
         plt.close('all')
 
-    # 6. Burnout boxplot by risk
+    # 6. Burnout by risk tier boxplot
     if 'risk' in data_df.columns:
-        fig, ax = _dark_fig()
-        risk_groups = [data_df[data_df['risk'] == r]['burnout_score'].dropna() for r in ['Low', 'Medium', 'High']]
-        bp = ax.boxplot(risk_groups, labels=['Low', 'Medium', 'High'], patch_artist=True)
-        box_colors = ['#28c76f', '#4facfe', '#ff4b5c']
-        for patch, color in zip(bp['boxes'], box_colors):
-            patch.set_facecolor(color)
-            patch.set_alpha(0.7)
-        for element in ['whiskers', 'caps', 'medians']:
-            for item in bp[element]:
-                item.set_color(text_col)
-        ax.set_title('Burnout Score by Risk Tier')
-        ax.set_xlabel('Risk Tier')
+        fig, ax = _dark_fig(6, 4)
+        sns.boxplot(
+            data=data_df, x='risk', y='burnout_score',
+            palette={'Low': '#28c76f', 'Medium': '#4facfe', 'High': '#ff4b5c'},
+            ax=ax,
+            boxprops={'alpha': 0.7, 'edgecolor': 'none'},
+            medianprops={'color': '#fff', 'linewidth': 2},
+            whiskerprops={'color': text_col},
+            capprops={'color': text_col},
+            flierprops={'marker': 'o', 'markerfacecolor': text_col, 'markeredgecolor': 'none', 'alpha': 0.5}
+        )
+        ax.set_title('Burnout Score Spread by Risk Tier')
+        ax.set_xlabel('Burnout Risk')
         ax.set_ylabel('Burnout Score')
         plt.tight_layout()
         plt.savefig(os.path.join(plot_dir, 'burnout_boxplot.png'))
         plt.close('all')
 
-    # 7. Study vs Burnout scatter
+    # 7. Study Hours vs Burnout
     if 'study_hours' in data_df.columns:
         fig, ax = _dark_fig()
-        ax.scatter(data_df['study_hours'], data_df['burnout_score'],
-                   color='#7367f0', alpha=0.6, edgecolors=dark_bg, linewidths=0.5, s=60)
+        sns.scatterplot(
+            data=data_df, x='study_hours', y='burnout_score',
+            color='#b392ac', ax=ax, s=50, alpha=0.7, edgecolor='none'
+        )
         ax.set_title('Study Hours vs Burnout Score')
         ax.set_xlabel('Study Hours')
         ax.set_ylabel('Burnout Score')
@@ -229,11 +318,15 @@ def process_data():
         plt.savefig(os.path.join(plot_dir, 'study_vs_burnout.png'))
         plt.close('all')
 
-    # 8. Stress vs Sleep scatter
+    # 8. Stress vs Sleep Hours
     if 'stress_level' in data_df.columns and 'sleep_hours' in data_df.columns:
         fig, ax = _dark_fig()
-        ax.scatter(data_df['stress_level'], data_df['sleep_hours'],
-                   color='#ff9f43', alpha=0.6, edgecolors=dark_bg, linewidths=0.5, s=60)
+        sns.regplot(
+            data=data_df, x='stress_level', y='sleep_hours',
+            scatter_kws={'color': '#4facfe', 'alpha': 0.6, 's': 40, 'edgecolor': 'none'},
+            line_kws={'color': '#ff4b5c', 'linewidth': 2},
+            ax=ax
+        )
         ax.set_title('Stress Level vs Sleep Hours')
         ax.set_xlabel('Stress Level')
         ax.set_ylabel('Sleep Hours')
@@ -244,27 +337,34 @@ def process_data():
     # 9. Sentiment distribution
     if 'sentiment_score' in data_df.columns:
         fig, ax = _dark_fig()
-        ax.hist(data_df['sentiment_score'], bins=20, color='#28c76f', edgecolor=dark_bg, alpha=0.85)
+        ax.hist(data_df['sentiment_score'], bins=15, color='#a8e6cf', edgecolor='none', alpha=0.8)
+        ax.axvline(0, color=text_col, linestyle='--', linewidth=0.8)
         ax.set_title('Sentiment Score Distribution')
-        ax.set_xlabel('VADER Compound Score (-1 to +1)')
-        ax.set_ylabel('Number of Students')
+        ax.set_xlabel('VADER Compound Score (-1 to 1)')
+        ax.set_ylabel('Students')
         plt.tight_layout()
         plt.savefig(os.path.join(plot_dir, 'sentiment_dist.png'))
         plt.close('all')
 
-    # 10. Sentiment vs Burnout scatter
+    # 10. Sentiment vs Burnout
     if 'sentiment_score' in data_df.columns:
         fig, ax = _dark_fig()
-        ax.scatter(data_df['sentiment_score'], data_df['burnout_score'],
-                   color='#ea5455', alpha=0.6, edgecolors=dark_bg, linewidths=0.5, s=60)
-        ax.set_title('Sentiment Score vs Burnout Score')
+        sns.scatterplot(
+            data=data_df, x='sentiment_score', y='burnout_score',
+            hue='risk' if 'risk' in data_df.columns else None,
+            palette={'Low': '#28c76f', 'Medium': '#4facfe', 'High': '#ff4b5c'} if 'risk' in data_df.columns else None,
+            ax=ax, s=50, alpha=0.8, edgecolor='none'
+        )
+        ax.axvline(0, color=text_col, linestyle='--', linewidth=0.8, alpha=0.5)
+        ax.set_title('Sentiment vs Burnout Score')
         ax.set_xlabel('Sentiment Score')
         ax.set_ylabel('Burnout Score')
+        ax.legend(facecolor=dark_bg, labelcolor=text_col, edgecolor=grid_col)
         plt.tight_layout()
         plt.savefig(os.path.join(plot_dir, 'sentiment_vs_burnout.png'))
         plt.close('all')
-
-    # --- Auto-train model and compute eval metrics from current dataset ---
+        
+    # Auto-train ML model silently in background
     _auto_train()
 
 
@@ -408,6 +508,20 @@ def evaluate():
     return render_template('evaluation.html', metrics=eval_metrics, active_page='evaluate')
 
 
+@app.route('/results')
+def results():
+    global data_df, eval_metrics
+    if data_df is None:
+        return redirect(url_for('index'))
+    return render_template(
+        'results.html',
+        active_page='results',
+        avg_burnout=round(data_df['burnout_score'].mean(), 2) if 'burnout_score' in data_df.columns else None,
+        high_risk_pct=round((len(data_df[data_df['risk'] == 'High']) / len(data_df) * 100), 1) if 'risk' in data_df.columns else None,
+        avg_sentiment=round(data_df['sentiment_score'].mean(), 2) if 'sentiment_score' in data_df.columns else None,
+        metrics=eval_metrics
+    )
+
 @app.route('/edit', methods=['GET', 'POST'])
 def edit():
     global data_df
@@ -444,6 +558,7 @@ def edit():
             process_data()
             os.makedirs('data', exist_ok=True)
             data_df.to_csv('data/updated_sample.csv', index=False)
+            flash("Dataset updated and metrics recalculated successfully.", "success")
         return redirect(url_for('dashboard'))
     return render_template(
         'edit.html',

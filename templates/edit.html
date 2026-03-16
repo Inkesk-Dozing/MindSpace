@@ -16,8 +16,16 @@
 {% endblock %}
 
 {% block content %}
+<div id="loading-overlay"
+    style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); z-index: 9999; flex-direction: column; align-items: center; justify-content: center; color: white;">
+    <i class="ph-duotone ph-spinner ph-spin"
+        style="font-size: 4rem; color: var(--brand-primary); margin-bottom: 1.5rem;"></i>
+    <h2 style="margin-bottom: 0.5rem;">Recalculating Analysis...</h2>
+    <p style="color: var(--text-secondary);">Updating records and retraining the model. Please wait.</p>
+</div>
 <div class="card" style="padding: 0; overflow: hidden;">
-    <div style="padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border);">
+    <div
+        style="padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border);">
         <h3 style="display: flex; align-items: center; gap: 8px;">
             <i class="ph-duotone ph-table"></i> Interactive Grid
         </h3>
@@ -26,7 +34,7 @@
         </button>
     </div>
 
-    <form id="edit-form" method="post">
+    <form id="edit-form" method="post" onsubmit="document.getElementById('loading-overlay').style.display='flex'">
         <div class="table-wrapper" style="border: none; border-radius: 0; max-height: 60vh; overflow-y: auto;">
             <table id="edit-table">
                 <thead style="position: sticky; top: 0; z-index: 10;">
@@ -51,9 +59,10 @@
                 </tbody>
             </table>
         </div>
-        
+
         <!-- Bottom sticky actions for long tables -->
-        <div style="padding: 1.5rem; background: var(--card-bg); border-top: 1px solid var(--card-border); display: flex; justify-content: flex-end; gap: 12px; position: sticky; bottom: 0;">
+        <div
+            style="padding: 1.5rem; background: var(--card-bg); border-top: 1px solid var(--card-border); display: flex; justify-content: flex-end; gap: 12px; position: sticky; bottom: 0;">
             <a href="{{ url_for('dashboard') }}" class="btn btn-outline">Cancel</a>
             <button type="submit" class="btn btn-primary"><i class="ph ph-floppy-disk"></i> Save Changes</button>
         </div>
@@ -67,7 +76,7 @@
         var tbody = document.getElementById('data-body');
         var rowCount = tbody.rows.length;
         var newRow = tbody.insertRow(rowCount);
-        
+
         // Add row number cell
         var numCell = newRow.insertCell(0);
         numCell.className = "row-num";
@@ -80,17 +89,17 @@
         for (var i = 1; i < headers.length; i++) { // Start at 1 to skip row number
             var cell = newRow.insertCell(i);
             cell.style.padding = "4px";
-            
+
             var input = document.createElement('input');
             input.type = 'text';
             // Reverse formatting done in header display
             var colNameRaw = headers[i].textContent.trim().toLowerCase().replace(/ /g, '_');
             input.name = colNameRaw + '_' + rowCount;
             input.placeholder = "New Value";
-            
+
             cell.appendChild(input);
         }
-        
+
         // Scroll to the new row
         newRow.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }

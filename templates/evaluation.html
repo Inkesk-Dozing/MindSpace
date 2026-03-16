@@ -10,16 +10,88 @@
     <i class="ph-duotone ph-warning-octagon" style="font-size: 4rem; color: var(--danger); margin-bottom: 1rem;"></i>
     <h3 style="margin-bottom: 0.5rem">Model Not Ready</h3>
     <p class="insight-desc">{{ error }}</p>
-    <div style="margin-top: 2rem; display: inline-block; text-align: left; background: var(--input-bg); padding: 1rem 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--card-border);">
+    <div
+        style="margin-top: 2rem; display: inline-block; text-align: left; background: var(--input-bg); padding: 1rem 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--card-border);">
         <p class="insight-desc" style="margin: 0; font-size: 0.9rem;">
             From your project root, run:<br>
-            <code style="display: block; margin-top: 8px; color: var(--brand-primary); font-family: 'Fira Code', monospace;">cd scripts && python train_model.py</code>
+            <code
+                style="display: block; margin-top: 8px; color: var(--brand-primary); font-family: 'Fira Code', monospace;">cd scripts && python train_model.py</code>
         </p>
     </div>
 </div>
 {% else %}
 
 <!-- Top Metrics -->
+{% set is_ready = metrics.f1 >= 0.85 and metrics.recall >= 0.80 %}
+{% set ready_status = 'ready' if is_ready else 'not-ready' %}
+
+<style>
+    .verdict-card {
+        background: linear-gradient(135deg, rgba(40, 199, 111, 0.05) 0%, rgba(24, 24, 27, 0) 100%);
+        margin-bottom: 2.5rem;
+    }
+
+    .verdict-card.ready {
+        border: 2px solid var(--success);
+    }
+
+    .verdict-card.not-ready {
+        border: 2px solid var(--warning);
+    }
+
+    .verdict-icon {
+        font-size: 2.5rem;
+    }
+
+    .verdict-icon.ready {
+        color: var(--success);
+    }
+
+    .verdict-icon.not-ready {
+        color: var(--warning);
+    }
+
+    .verdict-title {
+        margin-bottom: 0.5rem;
+        font-size: 1.4rem;
+    }
+
+    .verdict-title.ready {
+        color: var(--success);
+    }
+
+    .verdict-title.not-ready {
+        color: var(--warning);
+    }
+</style>
+
+<div class="card verdict-card {{ ready_status }}">
+    <div style="display: flex; align-items: flex-start; gap: 1.5rem;">
+        <div
+            style="padding: 1rem; background: var(--input-bg); border-radius: 50%; border: 1px solid var(--card-border);">
+            <i
+                class="ph-duotone {% if is_ready %}ph-check-circle{% else %}ph-warning-circle{% endif %} verdict-icon {{ ready_status }}"></i>
+        </div>
+        <div>
+            <h3 class="verdict-title {{ ready_status }}">
+                Deployment Readiness: {% if is_ready %}Approved for Production{% else %}Further Tuning Advised{% endif
+                %}
+            </h3>
+            <p style="color: var(--text-secondary); line-height: 1.6; font-size: 1.05rem; margin: 0;">
+                {% if is_ready %}
+                The model demonstrates robust predictive capabilities, exceeding the 85% F1-score and 80% Recall
+                thresholds. It is highly reliable at identifying high-risk students without generating excessive false
+                alarms.
+                {% else %}
+                The model shows promise but falls below our strict deployment thresholds (F1 &gt; 85%, Recall &gt; 80%).
+                We recommend collecting more diverse samples or engineering additional features before using this model
+                for automated outreach.
+                {% endif %}
+            </p>
+        </div>
+    </div>
+</div>
+
 <div class="stats-grid" style="margin-bottom: 2.5rem">
     <div class="card stat-card-inner">
         <i class="ph-fill ph-target bg-icon"></i>
@@ -29,7 +101,8 @@
     </div>
     <div class="card stat-card-inner">
         <i class="ph-fill ph-scales bg-icon"></i>
-        <div class="stat-label"><i class="ph ph-scales" style="color: var(--brand-primary)"></i> F1 Score (weighted)</div>
+        <div class="stat-label"><i class="ph ph-scales" style="color: var(--brand-primary)"></i> F1 Score (weighted)
+        </div>
         <div class="stat-val" style="color: var(--brand-primary)">{{ metrics.f1 }}</div>
         <div class="stat-sub">precision × recall balance</div>
     </div>
@@ -62,7 +135,8 @@
             {% endfor %}
             <!-- Data rows -->
             {% for i, row in metrics.confusion_matrix|enumerate %}
-            <div class="cm-side">Actual <strong style="color: var(--text-primary); margin-left: 4px;">{{ metrics.class_names[i] }}</strong></div>
+            <div class="cm-side">Actual <strong style="color: var(--text-primary); margin-left: 4px;">{{
+                    metrics.class_names[i] }}</strong></div>
             {% for j, val in row|enumerate %}
             <div class="cm-cell {% if i == j %}cm-correct{% else %}cm-wrong{% endif %}">{{ val }}</div>
             {% endfor %}
@@ -76,7 +150,8 @@
 
     <!-- Per-class breakdown -->
     <div class="card" style="padding: 0; overflow: hidden;">
-        <h3 style="padding: 1.5rem; border-bottom: 1px solid var(--card-border); display: flex; align-items: center; gap: 8px; margin: 0;">
+        <h3
+            style="padding: 1.5rem; border-bottom: 1px solid var(--card-border); display: flex; align-items: center; gap: 8px; margin: 0;">
             <i class="ph-duotone ph-list-dashes"></i> Per-Class Breakdown
         </h3>
         <div class="table-wrapper" style="border: none; border-radius: 0;">
@@ -106,13 +181,66 @@
         </div>
 
         <!-- Interpretation -->
-        <div class="takeaway-box" style="margin: 1.5rem; border-radius: var(--radius-sm);">
-            <strong><i class="ph-fill ph-lightbulb"></i> What these numbers mean for student burnout</strong>
-            <ul style="margin-top: 0.75rem; line-height: 1.8; color: var(--text-secondary); font-size: 0.85rem;">
-                <li><strong>Precision</strong> — of all students we flagged as "High Risk", how many genuinely were? A low precision means false alarms, wasted counselling resources.</li>
-                <li><strong>Recall</strong> — did we actually catch the students who were at risk? A low recall means students slipping through undetected.</li>
-                <li><strong>F1</strong> — the balance point. In welfare contexts, high recall matters more than precision; missing a crisis is worse than a false positive.</li>
+        <div class="takeaway-box"
+            style="margin: 1.5rem; border-radius: var(--radius-sm); border-left-color: var(--brand-primary); background: rgba(139, 92, 246, 0.05);">
+            <strong style="color: var(--text-primary); font-size: 1.05rem;"><i class="ph-fill ph-lightbulb"
+                    style="color: var(--brand-primary);"></i> Translating Model Efficacy to Student Welfare</strong>
+            <ul
+                style="margin-top: 1rem; line-height: 1.8; color: var(--text-secondary); font-size: 0.95rem; padding-left: 1.2rem;">
+                <li><strong style="color: var(--info);">Precision:</strong> Of the students proactively flagged, what
+                    percentage were truly at risk? Low precision wastes counselling resources on false alarms.</li>
+                <li><strong style="color: var(--warning);">Recall (Sensitivity):</strong> Did the model successfully
+                    capture all students in the high-risk cohort? <em>In welfare applications, high recall is
+                        prioritized—missing a crisis is worse than a false positive.</em></li>
+                <li><strong style="color: var(--brand-primary);">F1-Score:</strong> The harmonic mean balancing
+                    Precision and Recall, indicating overall system robustness against imbalanced classes.</li>
             </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Methodology Section -->
+<div class="card" style="margin-bottom: 2.5rem; background: rgba(139, 92, 246, 0.02);">
+    <h3 style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 10px;">
+        <i class="ph-duotone ph-student"></i> Methodology & Theoretical Framework
+    </h3>
+
+    <div class="insights-grid"
+        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+        <div
+            style="background: var(--card-bg); padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--card-border);">
+            <h4 style="color: var(--brand-primary); margin-bottom: 0.75rem;"><i class="ph-fill ph-tree-structure"></i>
+                The Algorithm</h4>
+            <p class="insight-desc" style="font-size: 0.95rem;">
+                MindSpace utilizes a <strong>Random Forest Classifier</strong>. Unlike simple linear models, Random
+                Forest builds an ensemble of decision trees, each voting on the risk level. This handles the "Non-Linear
+                Spikes" in burnout—where stress levels of 8 or 9 combined with low sleep create a risk level
+                significantly higher than the sum of its parts.
+            </p>
+        </div>
+
+        <div
+            style="background: var(--card-bg); padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--card-border);">
+            <h4 style="color: var(--info); margin-bottom: 0.75rem;"><i class="ph-fill ph-intersect"></i> Evaluation Mode
+            </h4>
+            <p class="insight-desc" style="font-size: 0.95rem;">
+                We employ a <strong>80/20 Supervised Split</strong>. The uploaded dataset is partitioned: 80% is used
+                for training (learning the patterns) and 20% is reserved as a "Blind Test." The metrics shown above
+                reflect how well the model performed on the blind test—data it had never seen before—ensuring a
+                realistic measure of its diagnostic accuracy.
+            </p>
+        </div>
+
+        <div
+            style="background: var(--card-bg); padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--card-border);">
+            <h4 style="color: var(--warning); margin-bottom: 0.75rem;"><i class="ph-fill ph-lightning"></i> Diagnostic
+                Success</h4>
+            <p class="insight-desc" style="font-size: 0.95rem;">
+                Our model "spared" through the data by identifying <strong>Multivariate Clusters</strong>. It doesn't
+                just look at high study hours; it analyzes the <em>ratio</em> of effort to recovery. This allows
+                MindSpace to differentiate between "High-Performance Achievers" (high study, high sleep) and "Burnout
+                Candidates" (high study, low sleep).
+            </p>
         </div>
     </div>
 </div>
@@ -140,10 +268,14 @@
         <img src="{{ url_for('static', filename='plots/confusion_matrix.png') }}" alt="Confusion Matrix Plot"
             style="width: 100%; border-radius: var(--radius-md); border: 1px solid var(--card-border); background: var(--input-bg);"
             onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
-        <div style="display:none; text-align: center; padding: 3rem; border: 2px dashed var(--card-border); border-radius: var(--radius-md);">
-            <i class="ph-duotone ph-image-broken" style="font-size: 3rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
+        <div
+            style="display:none; text-align: center; padding: 3rem; border: 2px dashed var(--card-border); border-radius: var(--radius-md);">
+            <i class="ph-duotone ph-image-broken"
+                style="font-size: 3rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
             <p style="color: var(--text-secondary);">
-                Run <code style="color: var(--brand-primary); padding: 4px 8px; background: var(--input-bg); border-radius: 4px;">python scripts/evaluate.py</code> to generate the plot image.
+                Run <code
+                    style="color: var(--brand-primary); padding: 4px 8px; background: var(--input-bg); border-radius: 4px;">python scripts/evaluate.py</code>
+                to generate the plot image.
             </p>
         </div>
     </div>
