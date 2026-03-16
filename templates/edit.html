@@ -1,68 +1,98 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>MindSpace - Edit Data</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <style>
-        .btn { padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; }
-        .btn-primary { background: #007bff; color: white; }
-        .btn-secondary { background: #6c757d; color: white; }
-    </style>
-</head>
-<body>
-    <nav class="navbar">
-        <span class="navbar-brand">MindSpace</span>
-        <div class="navbar-links">
-            <a href="{{ url_for('dashboard') }}" class="nav-link">Dashboard</a>
-        </div>
-    </nav>
+{% extends "base.html" %}
 
-    <div class="container">
-        <h1>Edit Data</h1>
-        <form method="post">
-            <table border="1" style="border-collapse: collapse; width: 100%;">
-                <thead>
+{% block title %}Edit Data{% endblock %}
+{% block page_title %}Edit Dataset{% endblock %}
+{% block page_subtitle %}Modify records directly. Changes will re-trigger the analysis.{% endblock %}
+
+{% block top_actions %}
+<div class="controls">
+    <button type="button" onclick="document.getElementById('edit-form').submit()" class="btn btn-primary">
+        <i class="ph ph-floppy-disk"></i> Save & Analyze
+    </button>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-outline">
+        <i class="ph ph-x"></i> Cancel
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="padding: 0; overflow: hidden;">
+    <div style="padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border);">
+        <h3 style="display: flex; align-items: center; gap: 8px;">
+            <i class="ph-duotone ph-table"></i> Interactive Grid
+        </h3>
+        <button type="button" onclick="addRow()" class="btn btn-outline" style="padding: 6px 14px; font-size: 0.85rem;">
+            <i class="ph ph-plus-circle"></i> Add Row
+        </button>
+    </div>
+
+    <form id="edit-form" method="post">
+        <div class="table-wrapper" style="border: none; border-radius: 0; max-height: 60vh; overflow-y: auto;">
+            <table id="edit-table">
+                <thead style="position: sticky; top: 0; z-index: 10;">
                     <tr>
+                        <th style="width: 50px;">#</th>
                         {% for col in columns %}
-                        <th style="padding: 10px; background: #f8f9fa;">{{ col }}</th>
+                        <th>{{ col|replace('_', ' ')|title }}</th>
                         {% endfor %}
                     </tr>
                 </thead>
                 <tbody id="data-body">
                     {% for i in range(data|length) %}
                     <tr>
+                        <td class="row-num" style="text-align: center; color: var(--text-muted)">{{ i + 1 }}</td>
                         {% for col in columns %}
-                        <td style="padding: 10px;"><input type="text" name="{{ col }}_{{ i }}" value="{{ data[i][col] }}" style="width: 100%; padding: 5px;"></td>
+                        <td style="padding: 4px;">
+                            <input type="text" name="{{ col }}_{{ i }}" value="{{ data[i][col] }}" placeholder="Empty">
+                        </td>
                         {% endfor %}
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
-            <div style="margin-top: 20px; text-align: right;">
-                <button type="button" onclick="addRow()" style="background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">Add New Row</button>
-                <button type="button" onclick="location.href='/dashboard'" style="background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">Proceed without saving</button>
-                <button type="submit" style="background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">Save Changes & Proceed</button>
-            </div>
-        </form>
-    </div>
+        </div>
+        
+        <!-- Bottom sticky actions for long tables -->
+        <div style="padding: 1.5rem; background: var(--card-bg); border-top: 1px solid var(--card-border); display: flex; justify-content: flex-end; gap: 12px; position: sticky; bottom: 0;">
+            <a href="{{ url_for('dashboard') }}" class="btn btn-outline">Cancel</a>
+            <button type="submit" class="btn btn-primary"><i class="ph ph-floppy-disk"></i> Save Changes</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
 
-    <script>
-        function addRow() {
-            var tbody = document.getElementById('data-body');
-            var rowCount = tbody.rows.length;
-            var newRow = tbody.insertRow(rowCount);
+{% block scripts %}
+<script>
+    function addRow() {
+        var tbody = document.getElementById('data-body');
+        var rowCount = tbody.rows.length;
+        var newRow = tbody.insertRow(rowCount);
+        
+        // Add row number cell
+        var numCell = newRow.insertCell(0);
+        numCell.className = "row-num";
+        numCell.style.textAlign = "center";
+        numCell.style.color = "var(--text-muted)";
+        numCell.innerHTML = rowCount + 1;
+
+        // Add input cells based on headers
+        var headers = document.querySelectorAll('#edit-table th');
+        for (var i = 1; i < headers.length; i++) { // Start at 1 to skip row number
+            var cell = newRow.insertCell(i);
+            cell.style.padding = "4px";
             
-            var colCount = document.getElementsByTagName('thead')[0].rows[0].cells.length;
-            for (var i = 0; i < colCount; i++) {
-                var cell = newRow.insertCell(i);
-                var input = document.createElement('input');
-                input.type = 'text';
-                input.name = document.getElementsByTagName('thead')[0].rows[0].cells[i].innerHTML.replace(/<[^>]*>/g, '').replace(/ /g, '_') + '_' + rowCount;
-                input.style = 'width: 100%; padding: 5px;';
-                cell.appendChild(input);
-            }
+            var input = document.createElement('input');
+            input.type = 'text';
+            // Reverse formatting done in header display
+            var colNameRaw = headers[i].textContent.trim().toLowerCase().replace(/ /g, '_');
+            input.name = colNameRaw + '_' + rowCount;
+            input.placeholder = "New Value";
+            
+            cell.appendChild(input);
         }
-    </script>
-</body>
-</html>
+        
+        // Scroll to the new row
+        newRow.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+</script>
+{% endblock %}

@@ -6,70 +6,80 @@
 
 {% block content %}
 {% if error %}
-<div class="card" style="border-left: 4px solid var(--accent-risk); padding: 2rem">
-    <h3 style="margin-bottom: 0.5rem">⚠️ Model Not Ready</h3>
+<div class="card" style="border-left: 4px solid var(--danger); padding: 2.5rem; text-align: center;">
+    <i class="ph-duotone ph-warning-octagon" style="font-size: 4rem; color: var(--danger); margin-bottom: 1rem;"></i>
+    <h3 style="margin-bottom: 0.5rem">Model Not Ready</h3>
     <p class="insight-desc">{{ error }}</p>
-    <p class="insight-desc" style="margin-top: 1rem">
-        From your project root, run:<br>
-        <code
-            style="background: rgba(255,255,255,0.07); padding: 4px 10px; border-radius: 6px">cd scripts &amp;&amp; python train_model.py</code>
-    </p>
+    <div style="margin-top: 2rem; display: inline-block; text-align: left; background: var(--input-bg); padding: 1rem 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--card-border);">
+        <p class="insight-desc" style="margin: 0; font-size: 0.9rem;">
+            From your project root, run:<br>
+            <code style="display: block; margin-top: 8px; color: var(--brand-primary); font-family: 'Fira Code', monospace;">cd scripts && python train_model.py</code>
+        </p>
+    </div>
 </div>
 {% else %}
 
 <!-- Top Metrics -->
 <div class="stats-grid" style="margin-bottom: 2.5rem">
     <div class="card stat-card-inner">
-        <div class="stat-label">Accuracy</div>
-        <div class="stat-val" style="color: var(--accent-emerald)">{{ (metrics.accuracy * 100)|round(2) }}%</div>
+        <i class="ph-fill ph-target bg-icon"></i>
+        <div class="stat-label"><i class="ph ph-target" style="color: var(--success)"></i> Accuracy</div>
+        <div class="stat-val" style="color: var(--success)">{{ (metrics.accuracy * 100)|round(2) }}%</div>
         <div class="stat-sub">{{ metrics.n_test }} test samples</div>
     </div>
     <div class="card stat-card-inner">
-        <div class="stat-label">F1 Score (weighted)</div>
-        <div class="stat-val" style="color: var(--accent-purple)">{{ metrics.f1 }}</div>
+        <i class="ph-fill ph-scales bg-icon"></i>
+        <div class="stat-label"><i class="ph ph-scales" style="color: var(--brand-primary)"></i> F1 Score (weighted)</div>
+        <div class="stat-val" style="color: var(--brand-primary)">{{ metrics.f1 }}</div>
         <div class="stat-sub">precision × recall balance</div>
     </div>
     <div class="card stat-card-inner">
-        <div class="stat-label">Precision</div>
-        <div class="stat-val" style="color: var(--accent-blue)">{{ metrics.precision }}</div>
-        <div class="stat-sub">weighted</div>
+        <i class="ph-fill ph-crosshair-simple bg-icon"></i>
+        <div class="stat-label"><i class="ph ph-crosshair-simple" style="color: var(--info)"></i> Precision</div>
+        <div class="stat-val" style="color: var(--info)">{{ metrics.precision }}</div>
+        <div class="stat-sub">weighted average</div>
     </div>
     <div class="card stat-card-inner">
-        <div class="stat-label">Recall</div>
-        <div class="stat-val" style="color: var(--accent-cyan)">{{ metrics.recall }}</div>
-        <div class="stat-sub">weighted</div>
+        <i class="ph-fill ph-magnifying-glass-plus bg-icon"></i>
+        <div class="stat-label"><i class="ph ph-magnifying-glass-plus" style="color: var(--warning)"></i> Recall</div>
+        <div class="stat-val" style="color: var(--warning)">{{ metrics.recall }}</div>
+        <div class="stat-sub">weighted average</div>
     </div>
 </div>
 
-<div class="metrics-grid" style="margin-bottom: 2.5rem">
+<div class="metrics-grid" style="margin-bottom: 2.5rem; display: grid; grid-template-columns: 1fr 1.5fr; gap: 1.5rem;">
     <!-- Confusion Matrix -->
-    <div class="card">
-        <h3 style="margin-bottom: 1.25rem">Confusion Matrix</h3>
+    <div class="card" style="padding: 1.5rem; overflow: hidden;">
+        <h3 style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 8px;">
+            <i class="ph-duotone ph-grid-four"></i> Confusion Matrix
+        </h3>
         {% if metrics.confusion_matrix %}
         <div class="cm-grid" style="--cm-cols: {{ metrics.class_names|length }}">
             <!-- Header row -->
             <div class="cm-corner"></div>
             {% for name in metrics.class_names %}
-            <div class="cm-head">Predicted<br><strong>{{ name }}</strong></div>
+            <div class="cm-head">Predicted<br><strong style="color: var(--text-primary)">{{ name }}</strong></div>
             {% endfor %}
             <!-- Data rows -->
             {% for i, row in metrics.confusion_matrix|enumerate %}
-            <div class="cm-side"><strong>Actual {{ metrics.class_names[i] }}</strong></div>
+            <div class="cm-side">Actual <strong style="color: var(--text-primary); margin-left: 4px;">{{ metrics.class_names[i] }}</strong></div>
             {% for j, val in row|enumerate %}
             <div class="cm-cell {% if i == j %}cm-correct{% else %}cm-wrong{% endif %}">{{ val }}</div>
             {% endfor %}
             {% endfor %}
         </div>
         {% endif %}
-        <p class="insight-desc" style="margin-top: 1rem; font-size: 0.85rem">
-            Diagonal cells = correct predictions. Off-diagonal = misclassifications.
+        <p class="insight-desc" style="margin-top: 1.5rem; font-size: 0.85rem; text-align: center;">
+            <i class="ph-fill ph-info"></i> Diagonal cells = correct predictions.<br>Off-diagonal = misclassifications.
         </p>
     </div>
 
     <!-- Per-class breakdown -->
-    <div class="card">
-        <h3 style="margin-bottom: 1.25rem">Per-Class Breakdown</h3>
-        <div class="table-wrapper">
+    <div class="card" style="padding: 0; overflow: hidden;">
+        <h3 style="padding: 1.5rem; border-bottom: 1px solid var(--card-border); display: flex; align-items: center; gap: 8px; margin: 0;">
+            <i class="ph-duotone ph-list-dashes"></i> Per-Class Breakdown
+        </h3>
+        <div class="table-wrapper" style="border: none; border-radius: 0;">
             <table>
                 <thead>
                     <tr>
@@ -87,8 +97,8 @@
                         <td><span class="badge badge-{{ name|lower }}">{{ name }}</span></td>
                         <td>{{ cls['precision']|round(2) }}</td>
                         <td>{{ cls['recall']|round(2) }}</td>
-                        <td>{{ cls['f1-score']|round(2) }}</td>
-                        <td>{{ cls['support']|int }}</td>
+                        <td><strong style="color: var(--brand-primary)">{{ cls['f1-score']|round(2) }}</strong></td>
+                        <td style="color: var(--text-muted)">{{ cls['support']|int }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -96,17 +106,12 @@
         </div>
 
         <!-- Interpretation -->
-        <div class="takeaway-box" style="margin-top: 1.5rem">
-            <strong>What these numbers mean for student burnout</strong>
-            <ul style="margin-top: 0.5rem; line-height: 1.8">
-                <li><strong>Precision</strong> — of all students we flagged as "High Risk", how many genuinely were? A
-                    low precision means false alarms, wasted counselling resources.</li>
-                <li><strong>Recall</strong> — did we actually catch the students who were at risk? A low recall means
-                    students slipping through undetected.</li>
-                <li><strong>F1</strong> — the balance point. In welfare contexts, high recall matters more than
-                    precision; missing a crisis is worse than a false positive.</li>
-                <li><strong>Support</strong> — how many students per class appeared in the test split, so you know if a
-                    class had enough representation to be reliable.</li>
+        <div class="takeaway-box" style="margin: 1.5rem; border-radius: var(--radius-sm);">
+            <strong><i class="ph-fill ph-lightbulb"></i> What these numbers mean for student burnout</strong>
+            <ul style="margin-top: 0.75rem; line-height: 1.8; color: var(--text-secondary); font-size: 0.85rem;">
+                <li><strong>Precision</strong> — of all students we flagged as "High Risk", how many genuinely were? A low precision means false alarms, wasted counselling resources.</li>
+                <li><strong>Recall</strong> — did we actually catch the students who were at risk? A low recall means students slipping through undetected.</li>
+                <li><strong>F1</strong> — the balance point. In welfare contexts, high recall matters more than precision; missing a crisis is worse than a false positive.</li>
             </ul>
         </div>
     </div>
@@ -114,11 +119,13 @@
 
 <!-- ROC-AUC notice -->
 {% if metrics.roc_auc %}
-<div class="card" style="margin-bottom: 2rem">
-    <div class="stat-label" style="margin-bottom:4px">ROC-AUC (One-vs-Rest)</div>
-    <div class="stat-val" style="color: var(--accent-cyan)">{{ metrics.roc_auc }}</div>
-    <p class="insight-desc" style="margin-top: 0.5rem">
-        AUC above 0.90 means the model can reliably distinguish between all three risk classes.
+<div class="card" style="margin-bottom: 2rem; display: flex; align-items: center; gap: 1.5rem;">
+    <div style="flex-shrink: 0; text-align: center; padding-right: 1.5rem; border-right: 1px solid var(--card-border);">
+        <div class="stat-label" style="justify-content: center;">ROC-AUC (OvR)</div>
+        <div class="stat-val" style="color: var(--info); font-size: 2rem;">{{ metrics.roc_auc }}</div>
+    </div>
+    <p class="insight-desc" style="margin: 0;">
+        AUC above <strong>0.90</strong> means the model can reliably distinguish between all three risk classes.
         The closer to 1.0, the less it needs to guess when the decision boundary is tight.
     </p>
 </div>
@@ -126,14 +133,19 @@
 
 <!-- Confusion matrix plot if it exists -->
 <div class="card">
-    <h3 style="margin-bottom: 1.25rem">Visual Confusion Matrix</h3>
+    <h3 style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 8px;">
+        <i class="ph-duotone ph-image"></i> Visual Confusion Matrix
+    </h3>
     <div style="max-width: 600px; margin: 0 auto">
         <img src="{{ url_for('static', filename='plots/confusion_matrix.png') }}" alt="Confusion Matrix Plot"
-            style="width: 100%; border-radius: 10px"
+            style="width: 100%; border-radius: var(--radius-md); border: 1px solid var(--card-border); background: var(--input-bg);"
             onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
-        <p style="display:none; color: var(--text-secondary); padding: 1rem">
-            Run <code>python scripts/evaluate.py</code> to generate the plot image.
-        </p>
+        <div style="display:none; text-align: center; padding: 3rem; border: 2px dashed var(--card-border); border-radius: var(--radius-md);">
+            <i class="ph-duotone ph-image-broken" style="font-size: 3rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
+            <p style="color: var(--text-secondary);">
+                Run <code style="color: var(--brand-primary); padding: 4px 8px; background: var(--input-bg); border-radius: 4px;">python scripts/evaluate.py</code> to generate the plot image.
+            </p>
+        </div>
     </div>
 </div>
 
