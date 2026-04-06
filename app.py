@@ -8,14 +8,16 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 plt.style.use('ggplot')
-from nltk.sentiment import SentimentIntensityAnalyzer
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
 import nltk
 import seaborn as sns
 
 try:
-    nltk.data.find('vader_lexicon.zip')
+    nltk.data.find('sentiment/vader_lexicon.zip')
 except LookupError:
     nltk.download('vader_lexicon')
+
+sia = SentimentIntensityAnalyzer()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'mindspace_secret_key'
@@ -23,9 +25,9 @@ app.jinja_env.filters['enumerate'] = enumerate
 
 data_df = None
 corr_matrix = None
-eval_metrics = None  # populated after every upload/process
-compare_df = None    # second dataset for side-by-side comparison
-compare_meta = None  # filename + stats for compare dataset
+eval_metrics = {'primary': None, 'compare': None}
+compare_df = None
+compare_meta = None
 
 @app.route('/')
 def index():
@@ -80,27 +82,6 @@ def upload():
     return redirect(url_for('index'))
 
 
-def _auto_train():
-    global data_df, eval_metrics
-    if data_df is None:
-        return
-
-    from sklearn.model_selection import train_test_split
-    from sklearn.ensemble import RandomForestClassifier
-    from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
-
-    features = ['sleep_hours', 'study_hours', 'stress_level']
-    if not all(col in data_df.columns for col in features) or 'risk' not in data_df.columns:
-        return
-
-    df_ml = data_df.dropna(subset=features + ['risk'])
-    if len(df_ml) < 10:
-        return
-
-    X = df_ml[features]
-    y = df_ml['risk']
-    
-    # Needs to be explicitly mapped for sklearn multi-class metrics
     class_mapping = {'Low': 0, 'Medium': 1, 'High': 2}
     y_encoded = y.map(class_mapping)
 
@@ -183,7 +164,6 @@ def process_data():
         data_df['burnout_score'], bins=[-1, 33, 66, 101], labels=['Low', 'Medium', 'High']
     )
 
-    sia = SentimentIntensityAnalyzer()
     if 'feedback' in data_df.columns:
         data_df['sentiment_score'] = data_df['feedback'].apply(
             lambda x: sia.polarity_scores(str(x))['compound']
@@ -365,12 +345,18 @@ def process_data():
         plt.close('all')
         
     # Auto-train ML model silently in background
-    _auto_train()
+    _auto_train('primary')
 
 
-def _auto_train():
-    """Train a RandomForest on the current data_df and store metrics in eval_metrics."""
-    global data_df, eval_metrics
+def _auto_train(target='primary'):
+    """Train a RandomForest on the specified dataset and store metrics in eval_metrics[target]."""
+    global data_df, compare_df, eval_metrics
+    
+    df = data_df if target == 'primary' else compare_df
+    if df is None:
+        eval_metrics[target] = None
+        return
+
     try:
         from sklearn.ensemble import RandomForestClassifier
         from sklearn.model_selection import train_test_split
@@ -380,14 +366,14 @@ def _auto_train():
             f1_score, roc_auc_score, confusion_matrix, classification_report
         )
 
-        feature_cols = [c for c in ['sleep_hours', 'study_hours', 'stress_level'] if c in data_df.columns]
-        if 'risk' not in data_df.columns or len(feature_cols) < 2:
-            eval_metrics = None
+        feature_cols = [c for c in ['sleep_hours', 'study_hours', 'stress_level'] if c in df.columns]
+        if 'risk' not in df.columns or len(feature_cols) < 2:
+            eval_metrics[target] = None
             return
 
-        df_clean = data_df[feature_cols + ['risk']].dropna()
+        df_clean = df[feature_cols + ['risk']].dropna()
         if df_clean.empty or df_clean['risk'].nunique() < 2:
-            eval_metrics = None
+            eval_metrics[target] = None
             return
 
         le = LabelEncoder()
@@ -395,12 +381,11 @@ def _auto_train():
         X = df_clean[feature_cols].values
         class_names = le.classes_.tolist()
 
-        # Need at least a handful of samples to be meaningful
         if len(y) < 10:
-            eval_metrics = None
+            eval_metrics[target] = None
             return
 
-        test_size = max(0.15, min(0.3, 20 / len(y)))  # adaptive: ~15-30%
+        test_size = max(0.15, min(0.3, 20 / len(y)))
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=test_size, random_state=42, stratify=y
         )
@@ -418,10 +403,10 @@ def _auto_train():
         try:
             if len(class_names) > 2:
                 roc_auc = round(roc_auc_score(y_test, y_prob, multi_class='ovr'), 4)
-        except Exception:
+        except:
             pass
 
-        eval_metrics = {
+        metrics = {
             'accuracy':  round(accuracy_score(y_test, y_pred), 4),
             'precision': round(precision_score(y_test, y_pred, average='weighted', zero_division=0), 4),
             'recall':    round(recall_score(y_test, y_pred, average='weighted', zero_division=0), 4),
@@ -435,11 +420,14 @@ def _auto_train():
             'report': report,
             'confusion_matrix': cm,
         }
+        eval_metrics[target] = metrics
 
-        # Also save plot of confusion matrix to static/plots
+        # Save specific confusion matrix plot
         import seaborn as sns
         plot_dir = os.path.join(app.static_folder, 'plots')
         os.makedirs(plot_dir, exist_ok=True)
+        img_filename = f'confusion_matrix_{target}.png'
+        
         dark_bg = '#0f1117'
         text_col = '#c9d1d9'
         fig, ax = plt.subplots(figsize=(6, 5), dpi=150)
@@ -451,12 +439,12 @@ def _auto_train():
             xticklabels=class_names, yticklabels=class_names,
             ax=ax, linewidths=0.5
         )
-        ax.set_title('Confusion Matrix', color=text_col)
+        ax.set_title(f'Confusion Matrix ({target.capitalize()})', color=text_col)
         ax.tick_params(colors=text_col)
         ax.set_xlabel('Predicted', color=text_col)
         ax.set_ylabel('Actual', color=text_col)
         plt.tight_layout()
-        plt.savefig(os.path.join(plot_dir, 'confusion_matrix.png'))
+        plt.savefig(os.path.join(plot_dir, img_filename))
         plt.close('all')
 
     except Exception as e:
@@ -490,22 +478,40 @@ def dashboard():
 @app.route('/evaluate')
 def evaluate():
     global eval_metrics
-    if eval_metrics is None and data_df is None:
+    target = request.args.get('dataset', 'primary')
+    if target not in ['primary', 'compare']:
+        target = 'primary'
+    
+    metrics = eval_metrics.get(target)
+    
+    if metrics is None and data_df is None:
         return render_template(
             'evaluation.html',
             error="No dataset loaded yet. Upload a CSV from the Home page first.",
             active_page='evaluate'
         )
-    if eval_metrics is None:
+    
+    if metrics is None:
         # dataset is loaded but somehow metrics are missing — re-run
-        _auto_train()
-    if eval_metrics is None:
+        _auto_train(target)
+        metrics = eval_metrics.get(target)
+
+    if metrics is None:
         return render_template(
             'evaluation.html',
-            error="Could not train the model on this dataset. Check that it has valid numeric columns (sleep_hours, study_hours, stress_level).",
-            active_page='evaluate'
+            error=f"Could not train the model on the {target} dataset. Check that it has valid numeric columns.",
+            active_page='evaluate',
+            target=target
         )
-    return render_template('evaluation.html', metrics=eval_metrics, active_page='evaluate')
+    
+    return render_template(
+        'evaluation.html', 
+        metrics=metrics, 
+        active_page='evaluate',
+        target=target,
+        primary_exists=(eval_metrics['primary'] is not None),
+        compare_exists=(eval_metrics['compare'] is not None)
+    )
 
 
 @app.route('/results')
@@ -519,7 +525,7 @@ def results():
         avg_burnout=round(data_df['burnout_score'].mean(), 2) if 'burnout_score' in data_df.columns else None,
         high_risk_pct=round((len(data_df[data_df['risk'] == 'High']) / len(data_df) * 100), 1) if 'risk' in data_df.columns else None,
         avg_sentiment=round(data_df['sentiment_score'].mean(), 2) if 'sentiment_score' in data_df.columns else None,
-        metrics=eval_metrics
+        metrics=eval_metrics['primary']
     )
 
 @app.route('/edit', methods=['GET', 'POST'])
@@ -571,7 +577,6 @@ def edit():
 
 def _build_stats(df):
     """Compute summary stats dict for one dataset."""
-    sia = SentimentIntensityAnalyzer()
     if 'feedback' in df.columns:
         df = df.copy()
         df['sentiment_score'] = df['feedback'].apply(lambda x: sia.polarity_scores(str(x))['compound'])
@@ -760,14 +765,18 @@ def compare_upload():
         )
         cdf['burnout_score'] = np.clip(cdf['burnout_score'], 0, 100)
         cdf['risk'] = pd.cut(cdf['burnout_score'], bins=[-1, 33, 66, 101], labels=['Low', 'Medium', 'High'])
-        sia = SentimentIntensityAnalyzer()
         if 'feedback' in cdf.columns:
             cdf['sentiment_score'] = cdf['feedback'].apply(lambda x: sia.polarity_scores(str(x))['compound'])
         compare_df = cdf
         compare_meta = {'filename': file.filename, 'records': len(cdf)}
+        
+        # Trigger evaluation for the comparison dataset
+        _auto_train('compare')
+        
         return redirect(url_for('compare_results'))
     except Exception as e:
         print(f"Compare upload error: {e}")
+        flash(f"Error processing comparison file: {e}", "danger")
         return redirect(url_for('compare'))
 
 
@@ -819,9 +828,10 @@ def compare_results():
 
 @app.route('/compare/clear')
 def compare_clear():
-    global compare_df, compare_meta
+    global compare_df, compare_meta, eval_metrics
     compare_df = None
     compare_meta = None
+    eval_metrics['compare'] = None
     return redirect(url_for('compare'))
 
 

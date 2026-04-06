@@ -235,9 +235,9 @@ Primary dataset ready. Upload a second CSV below to compare.
 {{ cmp_chart(
 "ph-waves",
 "Burnout Score Distributions — Overlaid",
-"Both datasets overlaid on the same axis. Blue = " + label_a + ", Orange = " + label_b + ".",
+"Both datasets overlaid on the same axis. Blue = " ~ label_a ~ ", Orange = " ~ label_b ~ ".",
 "If the orange waveform is shifted right of blue, Dataset B has structurally higher burnout. Overlap in the middle means
-similar distributions; divergence at the extremes signals qualitative differences in the cohort composition.",
+similar distributions.",
 "cmp_burnout_hist.png"
 ) }}
 

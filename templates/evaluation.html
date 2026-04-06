@@ -10,16 +10,34 @@
     <i class="ph-duotone ph-warning-octagon" style="font-size: 4rem; color: var(--danger); margin-bottom: 1rem;"></i>
     <h3 style="margin-bottom: 0.5rem">Model Not Ready</h3>
     <p class="insight-desc">{{ error }}</p>
-    <div
-        style="margin-top: 2rem; display: inline-block; text-align: left; background: var(--input-bg); padding: 1rem 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--card-border);">
-        <p class="insight-desc" style="margin: 0; font-size: 0.9rem;">
-            From your project root, run:<br>
-            <code
-                style="display: block; margin-top: 8px; color: var(--brand-primary); font-family: 'Fira Code', monospace;">cd scripts && python train_model.py</code>
-        </p>
-    </div>
+    {% if target == 'compare' %}
+    <p class="insight-desc" style="margin-top: 1rem;">
+        <a href="{{ url_for('evaluate', dataset='primary') }}" class="btn btn-outline" style="margin: 0 auto">
+            <i class="ph ph-arrow-left"></i> Back to Primary Dataset
+        </a>
+    </p>
+    {% endif %}
 </div>
 {% else %}
+
+{# ═══════════════════════ DATASET TOGGLE ═══════════════════════ #}
+{% if compare_exists %}
+<div class="card"
+    style="margin-bottom: 2rem; padding: 0.75rem; display: flex; justify-content: center; background: var(--input-bg);">
+    <div style="display: flex; gap: 0.5rem;">
+        <a href="{{ url_for('evaluate', dataset='primary') }}"
+            class="btn {% if target == 'primary' %}btn-primary{% else %}btn-outline{% endif %}"
+            style="padding: 0.6rem 1.5rem; font-size: 0.9rem;">
+            <i class="ph ph-database"></i> Primary Dataset
+        </a>
+        <a href="{{ url_for('evaluate', dataset='compare') }}"
+            class="btn {% if target == 'compare' %}btn-primary{% else %}btn-outline{% endif %}"
+            style="padding: 0.6rem 1.5rem; font-size: 0.9rem;">
+            <i class="ph ph-arrows-left-right"></i> Comparison Dataset
+        </a>
+    </div>
+</div>
+{% endif %}
 
 <!-- Top Metrics -->
 {% set is_ready = metrics.f1 >= 0.85 and metrics.recall >= 0.80 %}
@@ -265,7 +283,8 @@
         <i class="ph-duotone ph-image"></i> Visual Confusion Matrix
     </h3>
     <div style="max-width: 600px; margin: 0 auto">
-        <img src="{{ url_for('static', filename='plots/confusion_matrix.png') }}" alt="Confusion Matrix Plot"
+        <img src="{{ url_for('static', filename='plots/confusion_matrix_' + target + '.png') }}"
+            alt="Confusion Matrix Plot"
             style="width: 100%; border-radius: var(--radius-md); border: 1px solid var(--card-border); background: var(--input-bg);"
             onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
         <div
