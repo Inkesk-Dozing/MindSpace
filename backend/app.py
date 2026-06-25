@@ -21,9 +21,9 @@ app = Flask(__name__, static_folder='static', static_url_path='/static')
 
 CORS(app, supports_credentials=True)
 
-app.config['SECRET_KEY']              = 'mindspace_secret_key'
+app.config['SECRET_KEY']              = os.environ.get('SECRET_KEY', 'mindspace_secret_key')
 app.config['SESSION_COOKIE_SAMESITE'] = 'None'
-app.config['SESSION_COOKIE_SECURE']   = True
+app.config['SESSION_COOKIE_SECURE']   = os.environ.get('FLASK_ENV') == 'production'
 
 # Clear old plots on startup
 plot_dir = os.path.join(app.static_folder, 'plots')

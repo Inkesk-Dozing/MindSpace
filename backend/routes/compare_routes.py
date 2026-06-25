@@ -42,7 +42,7 @@ def compare_upload():
         cdf['risk'] = pd.cut(cdf['burnout_score'], bins=[-1, 33, 66, 101], labels=['Low', 'Medium', 'High'])
         if 'feedback' in cdf.columns:
             cdf['sentiment_score'] = cdf['feedback'].apply(
-                lambda x: state.sia.polarity_scores(str(x))['compound']
+                lambda x: state.get_sia().polarity_scores(str(x))['compound']
             )
 
         state.compare_df = cdf
@@ -68,8 +68,8 @@ def compare_results():
     )
     label_b = state.compare_meta.get('filename', 'Dataset B')
 
-    stats_a = _build_stats(state.data_df.copy(), state.sia)
-    stats_b = _build_stats(state.compare_df.copy(), state.sia)
+    stats_a = _build_stats(state.data_df.copy(), state.get_sia())
+    stats_b = _build_stats(state.compare_df.copy(), state.get_sia())
 
     plot_dir = os.path.join(current_app.static_folder, 'plots')
     _generate_compare_plots(stats_a, stats_b, label_a, label_b, plot_dir)

@@ -8,13 +8,18 @@ is maintained across the entire app.
 import nltk
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 
-try:
-    nltk.data.find('sentiment/vader_lexicon.zip')
-except LookupError:
-    nltk.download('vader_lexicon')
+def get_sia():
+    global sia
+    if sia is None:
+        try:
+            nltk.data.find('sentiment/vader_lexicon.zip')
+        except LookupError:
+            nltk.download('vader_lexicon', quiet=True)
+        sia = SentimentIntensityAnalyzer()
+    return sia
 
 # Shared sentiment analyser instance
-sia = SentimentIntensityAnalyzer()
+sia = None
 
 # Primary uploaded dataset
 data_df = None

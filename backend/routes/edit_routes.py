@@ -41,7 +41,7 @@ def edit():
             print(f"Error updating row {row} col {col}: {e}")
 
     plot_dir = os.path.join(current_app.static_folder, 'plots')
-    state.data_df, state.corr_matrix = process_data(state.data_df, plot_dir, state.sia)
+    state.data_df, state.corr_matrix = process_data(state.data_df, plot_dir, state.get_sia())
 
     metrics = _auto_train(state.data_df, plot_dir, 'primary')
     if metrics:
