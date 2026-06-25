@@ -1,7 +1,8 @@
 import os
 import json
 from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, request, jsonify, session, url_for
+from flask_cors import CORS
 import pandas as pd
 import numpy as np
 import matplotlib
@@ -11,53 +12,29 @@ plt.style.use('ggplot')
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 import nltk
 import seaborn as sns
-
-# Add local nltk_data to search path for offline container deployments
-local_nltk_path = os.path.join(os.path.dirname(__file__), 'nltk_data')
-if local_nltk_path not in nltk.data.path:
-    nltk.data.path.append(local_nltk_path)
+from urllib.parse import urljoin
+import shutil
 
 try:
     nltk.data.find('sentiment/vader_lexicon.zip')
 except LookupError:
-    try:
-        nltk.download('vader_lexicon', download_dir=local_nltk_path)
-    except Exception:
-        # Fallback to writable directory in serverless environments
-        tmp_nltk_path = os.path.join('/tmp', 'nltk_data')
-        os.makedirs(tmp_nltk_path, exist_ok=True)
-        if tmp_nltk_path not in nltk.data.path:
-            nltk.data.path.append(tmp_nltk_path)
-        nltk.download('vader_lexicon', download_dir=tmp_nltk_path)
+    nltk.download('vader_lexicon')
 
 sia = SentimentIntensityAnalyzer()
 
-# Helper to handle read-only filesystems in environments like Vercel
-def get_writable_dir(path_name):
-    try:
-        os.makedirs(path_name, exist_ok=True)
-        # Test write access
-        test_file = os.path.join(path_name, '.write_test')
-        with open(test_file, 'w') as f:
-            f.write('')
-        os.remove(test_file)
-        return path_name
-    except Exception:
-        # Fallback to /tmp under serverless environment
-        fallback = os.path.join('/tmp', os.path.basename(path_name) or 'fallback')
-        os.makedirs(fallback, exist_ok=True)
-        return fallback
+app = Flask(__name__, static_folder='static', static_url_path='/static')
+CORS(app, supports_credentials=True) # Enable CORS for React frontend
 
-app = Flask(__name__)
+# clear old plots on startup
+plot_dir = os.path.join(app.static_folder, 'plots')
+if os.path.exists(plot_dir):
+    shutil.rmtree(plot_dir)
+    
+os.makedirs(plot_dir, exist_ok=True)
+
 app.config['SECRET_KEY'] = 'mindspace_secret_key'
-app.jinja_env.filters['enumerate'] = enumerate
-
-# Route custom requests for static plots to the resolved writable directory
-from flask import send_from_directory
-@app.route('/static/plots/<path:filename>')
-def serve_custom_plots(filename):
-    plots_dir = get_writable_dir(os.path.join(app.static_folder, 'plots'))
-    return send_from_directory(plots_dir, filename)
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+app.config['SESSION_COOKIE_SECURE'] = True
 
 data_df = None
 corr_matrix = None
@@ -65,103 +42,68 @@ eval_metrics = {'primary': None, 'compare': None}
 compare_df = None
 compare_meta = None
 
-@app.route('/')
-def index():
-    history = session.get('history', [])
-    return render_template('index.html', history=history, active_page='index')
+# Helper to generate full URLs for static files
+def get_static_url(filename):
+    return url_for(
+        'static',
+        filename=f'plots/{filename}',
+        _external=True
+    )
 
-@app.route('/reset')
+@app.route('/api/history', methods=['GET'])
+def get_history():
+    history = session.get('history', [])
+    return jsonify({'history': history})
+
+@app.route('/api/reset', methods=['POST'])
 def reset():
     session.pop('history', None)
-    return redirect(url_for('index'))
+    return jsonify({'success': True})
 
-@app.route('/delete-session/<int:idx>')
+@app.route('/api/delete-session/<int:idx>', methods=['DELETE'])
 def delete_session(idx):
     history = session.get('history', [])
     if 0 <= idx < len(history):
         history.pop(idx)
         session['history'] = history
         session.modified = True
-    return redirect(url_for('index'))
+    return jsonify({'success': True, 'history': session.get('history', [])})
 
-@app.route('/upload', methods=['POST', 'GET'])
+@app.route('/api/upload', methods=['POST'])
 def upload():
     global data_df
-    if request.method == 'POST':
-        if 'file' not in request.files:
-            return redirect(url_for('index'))
-        file = request.files['file']
-        if file.filename == '':
-            return redirect(url_for('index'))
-        if file and file.filename.endswith('.csv'):
-            try:
-                data_df = pd.read_csv(file)
-                history = session.get('history', [])
-                new_entry = {
-                    'filename': file.filename,
-                    'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M"),
-                    'records': len(data_df)
-                }
-                history.insert(0, new_entry)
-                session['history'] = history[:10]
-                session.modified = True
-                process_data()
-                writable_data_dir = get_writable_dir('data')
-                data_df.to_csv(os.path.join(writable_data_dir, 'updated_sample.csv'), index=False)
-                flash(f"Successfully uploaded {file.filename}. {len(data_df)} records processed.", "success")
-                return redirect(url_for('dashboard'))
-            except Exception as e:
-                flash(f"Error processing CSV: {str(e)}", "danger")
-                return redirect(url_for('index'))
-        else:
-            flash("Invalid file format. Please upload a CSV file.", "danger")
-    return redirect(url_for('index'))
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+    if file and file.filename.endswith('.csv'):
+        try:
+            data_df = pd.read_csv(file)
+            history = session.get('history', [])
+            new_entry = {
+                'filename': file.filename,
+                'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M"),
+                'records': len(data_df)
+            }
+            history.insert(0, new_entry)
+            session['history'] = history[:10]
+            session.modified = True
+            process_data()
+            os.makedirs('data', exist_ok=True)
+            data_df.to_csv('data/updated_sample.csv', index=False)
+            return jsonify({'success': True, 'message': f"Successfully uploaded {file.filename}.", 'records': len(data_df)})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    return jsonify({'error': 'Invalid file format'}), 400
 
-
-    class_mapping = {'Low': 0, 'Medium': 1, 'High': 2}
-    y_encoded = y.map(class_mapping)
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
-    
-    model = RandomForestClassifier(n_estimators=100, random_state=42, class_weight='balanced')
-    model.fit(X_train, y_train)
-
-    y_pred = model.predict(X_test)
-    y_prob = model.predict_proba(X_test)
-
-    cm = confusion_matrix(y_test, y_pred, labels=[0, 1, 2]).tolist()
-    
-    from sklearn.metrics import classification_report
-    report = classification_report(y_test, y_pred, target_names=['Low', 'Medium', 'High'], output_dict=True, zero_division=0)
-
-    # Save cm plot
-    plot_dir = get_writable_dir(os.path.join(app.static_folder, 'plots'))
-    plt.figure(figsize=(6, 5))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['Low', 'Medium', 'High'], yticklabels=['Low', 'Medium', 'High'])
-    plt.title('Confusion Matrix')
-    plt.ylabel('Actual')
-    plt.xlabel('Predicted')
-    plt.tight_layout()
-    plt.savefig(os.path.join(plot_dir, 'confusion_matrix.png'))
-    plt.close('all')
-
-    eval_metrics = {
-        'accuracy': accuracy_score(y_test, y_pred),
-        'precision': round(precision_score(y_test, y_pred, average='weighted', zero_division=0), 3),
-        'recall': round(recall_score(y_test, y_pred, average='weighted', zero_division=0), 3),
-        'f1': round(f1_score(y_test, y_pred, average='weighted', zero_division=0), 3),
-        'roc_auc': round(roc_auc_score(y_test, y_prob, multi_class='ovr'), 3),
-        'confusion_matrix': cm,
-        'class_names': ['Low', 'Medium', 'High'],
-        'n_test': len(y_test),
-        'report': report
-    }
 
 def process_data():
     global data_df, corr_matrix, eval_metrics
     if data_df is None:
         return
-    plot_dir = get_writable_dir(os.path.join(app.static_folder, 'plots'))
+    plot_dir = os.path.join(app.static_folder, 'plots')
+    os.makedirs(plot_dir, exist_ok=True)
 
     # Fuzzy column mapping
     col_map = {
@@ -458,7 +400,8 @@ def _auto_train(target='primary'):
 
         # Save specific confusion matrix plot
         import seaborn as sns
-        plot_dir = get_writable_dir(os.path.join(app.static_folder, 'plots'))
+        plot_dir = os.path.join(app.static_folder, 'plots')
+        os.makedirs(plot_dir, exist_ok=True)
         img_filename = f'confusion_matrix_{target}.png'
         
         dark_bg = '#0f1117'
@@ -482,14 +425,14 @@ def _auto_train(target='primary'):
 
     except Exception as e:
         print(f"[Auto-train error] {e}")
-        eval_metrics = None
+        eval_metrics[target] = None
 
-@app.route('/dashboard')
+@app.route('/api/dashboard', methods=['GET'])
 def dashboard():
     global data_df
     if data_df is None:
-        return redirect(url_for('index'))
-    process_data()
+        return jsonify({'error': 'No dataset loaded'}), 400
+    
     stats = {
         'avg_burnout': round(data_df['burnout_score'].mean(), 1),
         'median_burnout': round(data_df['burnout_score'].median(), 1),
@@ -499,16 +442,29 @@ def dashboard():
         'pct_high_risk': round((data_df['risk'] == 'High').sum() / len(data_df) * 100, 1),
         'avg_sentiment': round(data_df['sentiment_score'].mean(), 2)
     }
-    return render_template(
-        'dashboard.html',
-        data=data_df.to_dict('records'),
-        columns=data_df.columns.tolist(),
-        active_page='dashboard',
-        **stats
-    )
+    
+    # We replace NaN with None for valid JSON serialization
+    safe_df = data_df.replace({np.nan: None})
+    
+    return jsonify({
+        'stats': stats,
+        'columns': data_df.columns.tolist(),
+        'data': safe_df.to_dict('records')[:100], # return top 100 for preview to avoid massive payloads
+        'plots': {
+            'score_hist': get_static_url('score_hist.png'),
+            'risk_pie': get_static_url('risk_pie.png'),
+            'stress_vs_burnout': get_static_url('stress_vs_burnout.png'),
+            'correlation_heatmap': get_static_url('correlation_heatmap.png'),
+            'sleep_vs_burnout': get_static_url('sleep_vs_burnout.png'),
+            'burnout_boxplot': get_static_url('burnout_boxplot.png'),
+            'study_vs_burnout': get_static_url('study_vs_burnout.png'),
+            'stress_vs_sleep': get_static_url('stress_vs_sleep.png'),
+            'sentiment_dist': get_static_url('sentiment_dist.png'),
+            'sentiment_vs_burnout': get_static_url('sentiment_vs_burnout.png'),
+        }
+    })
 
-
-@app.route('/evaluate')
+@app.route('/api/evaluate', methods=['GET'])
 def evaluate():
     global eval_metrics
     target = request.args.get('dataset', 'primary')
@@ -518,95 +474,70 @@ def evaluate():
     metrics = eval_metrics.get(target)
     
     if metrics is None and data_df is None:
-        return render_template(
-            'evaluation.html',
-            error="No dataset loaded yet. Upload a CSV from the Home page first.",
-            active_page='evaluate'
-        )
+        return jsonify({'error': "No dataset loaded yet. Upload a CSV from the Home page first."}), 400
     
     if metrics is None:
-        # dataset is loaded but somehow metrics are missing — re-run
         _auto_train(target)
         metrics = eval_metrics.get(target)
 
     if metrics is None:
-        return render_template(
-            'evaluation.html',
-            error=f"Could not train the model on the {target} dataset. Check that it has valid numeric columns.",
-            active_page='evaluate',
-            target=target
-        )
+        return jsonify({'error': f"Could not train the model on the {target} dataset. Check that it has valid numeric columns."}), 400
     
-    return render_template(
-        'evaluation.html', 
-        metrics=metrics, 
-        active_page='evaluate',
-        target=target,
-        primary_exists=(eval_metrics['primary'] is not None),
-        compare_exists=(eval_metrics['compare'] is not None)
-    )
+    return jsonify({
+        'metrics': metrics,
+        'primary_exists': (eval_metrics['primary'] is not None),
+        'compare_exists': (eval_metrics['compare'] is not None),
+        'plot': get_static_url(f'confusion_matrix_{target}.png')
+    })
 
-
-@app.route('/results')
+@app.route('/api/results', methods=['GET'])
 def results():
     global data_df, eval_metrics
     if data_df is None:
-        return redirect(url_for('index'))
-    return render_template(
-        'results.html',
-        active_page='results',
-        avg_burnout=round(data_df['burnout_score'].mean(), 2) if 'burnout_score' in data_df.columns else None,
-        high_risk_pct=round((len(data_df[data_df['risk'] == 'High']) / len(data_df) * 100), 1) if 'risk' in data_df.columns else None,
-        avg_sentiment=round(data_df['sentiment_score'].mean(), 2) if 'sentiment_score' in data_df.columns else None,
-        metrics=eval_metrics['primary']
-    )
+        return jsonify({'error': 'No dataset loaded'}), 400
+    return jsonify({
+        'avg_burnout': round(data_df['burnout_score'].mean(), 2) if 'burnout_score' in data_df.columns else None,
+        'high_risk_pct': round((len(data_df[data_df['risk'] == 'High']) / len(data_df) * 100), 1) if 'risk' in data_df.columns else None,
+        'avg_sentiment': round(data_df['sentiment_score'].mean(), 2) if 'sentiment_score' in data_df.columns else None,
+        'metrics': eval_metrics['primary']
+    })
 
-@app.route('/edit', methods=['GET', 'POST'])
+@app.route('/api/edit', methods=['POST'])
 def edit():
     global data_df
     if data_df is None:
-        return redirect(url_for('index'))
-    if request.method == 'POST':
-        submitted_rows = set()
-        for key in request.form:
-            if '_' in key:
-                _, row_str = key.rsplit('_', 1)
-                submitted_rows.add(int(row_str))
+        return jsonify({'error': 'No dataset loaded'}), 400
+        
+    req_data = request.json
+    if not req_data:
+        return jsonify({'error': 'No data provided'}), 400
+        
+    # Expecting format: { "updates": [ { "row": 0, "col": "sleep_hours", "value": 8 }, ... ] }
+    updates = req_data.get('updates', [])
+    for update in updates:
+        row = int(update['row'])
+        col = update['col']
+        value = update['value']
+        
+        # Extend dataframe if new row
+        if row >= len(data_df):
+            new_rows = row - len(data_df) + 1
+            new_df = pd.DataFrame(index=range(len(data_df), len(data_df) + new_rows), columns=data_df.columns)
+            data_df = pd.concat([data_df, new_df], ignore_index=False)
+            
+        try:
+            if col in data_df.columns:
+                data_df.at[row, col] = (
+                    pd.to_numeric(value, errors='coerce')
+                    if pd.api.types.is_numeric_dtype(data_df[col]) else value
+                )
+        except Exception as e:
+            print(f"Error updating row {row} col {col}: {e}")
 
-        if submitted_rows:
-            max_row = max(submitted_rows)
-            if max_row >= len(data_df):
-                new_rows = max_row - len(data_df) + 1
-                new_df = pd.DataFrame(index=range(len(data_df), len(data_df) + new_rows), columns=data_df.columns)
-                data_df = pd.concat([data_df, new_df], ignore_index=False)
-
-            for key in request.form:
-                if '_' in key:
-                    col, row_str = key.rsplit('_', 1)
-                    i = int(row_str)
-                    value = request.form[key].strip()
-                    try:
-                        if col in data_df.columns:
-                            data_df.at[i, col] = (
-                                pd.to_numeric(value, errors='coerce')
-                                if pd.api.types.is_numeric_dtype(data_df[col]) else value
-                            )
-                    except:
-                        pass
-
-            process_data()
-            writable_data_dir = get_writable_dir('data')
-            data_df.to_csv(os.path.join(writable_data_dir, 'updated_sample.csv'), index=False)
-            flash("Dataset updated and metrics recalculated successfully.", "success")
-        return redirect(url_for('dashboard'))
-    return render_template(
-        'edit.html',
-        data=data_df.to_dict('records'),
-        columns=data_df.columns.tolist(),
-        data_length=len(data_df),
-        active_page='dashboard'
-    )
-
+    process_data()
+    os.makedirs('data', exist_ok=True)
+    data_df.to_csv('data/updated_sample.csv', index=False)
+    return jsonify({'success': True, 'message': 'Dataset updated successfully.'})
 
 def _build_stats(df):
     """Compute summary stats dict for one dataset."""
@@ -644,8 +575,8 @@ def _build_stats(df):
 
 
 def _generate_compare_plots(stats_a, stats_b, label_a, label_b):
-    """Generate 5 comparison plots saved to static/plots/cmp_*.png."""
-    plot_dir = get_writable_dir(os.path.join(app.static_folder, 'plots'))
+    plot_dir = os.path.join(app.static_folder, 'plots')
+    os.makedirs(plot_dir, exist_ok=True)
 
     dark_bg  = '#0f1117'
     text_col = '#c9d1d9'
@@ -701,7 +632,7 @@ def _generate_compare_plots(stats_a, stats_b, label_a, label_b):
 
     # 3. Feature averages radar-style bar
     feature_labels = ['Avg Sleep\n(hrs)', 'Avg Study\n(hrs)', 'Avg Stress\n(/10)', 'Avg Burnout\n(/100)']
-    scale = [10, 10, 10, 100]   # normalise to 0-1 for fair visual comparison
+    scale = [10, 10, 10, 100]   
     def _safe(v, s): return (v or 0) / s
     raw_a = [stats_a['avg_sleep'], stats_a['avg_study'], stats_a['avg_stress'], stats_a['avg_burnout']]
     raw_b = [stats_b['avg_sleep'], stats_b['avg_study'], stats_b['avg_stress'], stats_b['avg_burnout']]
@@ -760,32 +691,27 @@ def _generate_compare_plots(stats_a, stats_b, label_a, label_b):
         plt.savefig(os.path.join(plot_dir, 'cmp_sentiment.png'))
         plt.close('all')
 
-
-@app.route('/compare')
-def compare():
+@app.route('/api/compare', methods=['GET'])
+def compare_status():
     global data_df, compare_df, compare_meta
-    return render_template(
-        'compare.html',
-        active_page='compare',
-        primary_loaded=data_df is not None,
-        compare_loaded=compare_df is not None,
-        compare_meta=compare_meta,
-    )
+    return jsonify({
+        'primary_loaded': data_df is not None,
+        'compare_loaded': compare_df is not None,
+        'compare_meta': compare_meta,
+    })
 
-
-@app.route('/compare/upload', methods=['POST'])
+@app.route('/api/compare/upload', methods=['POST'])
 def compare_upload():
     global data_df, compare_df, compare_meta
     if data_df is None:
-        return redirect(url_for('index'))
+        return jsonify({'error': 'No primary dataset loaded'}), 400
     if 'file' not in request.files or request.files['file'].filename == '':
-        return redirect(url_for('compare'))
+        return jsonify({'error': 'No selected file'}), 400
     file = request.files['file']
     if not file.filename.endswith('.csv'):
-        return redirect(url_for('compare'))
+        return jsonify({'error': 'Invalid file format'}), 400
     try:
         cdf = pd.read_csv(file)
-        # Apply same preprocessing
         for col in ['sleep_hours', 'study_hours', 'stress_level']:
             if col in cdf.columns:
                 cdf[col] = pd.to_numeric(cdf[col], errors='coerce').fillna(0)
@@ -802,21 +728,17 @@ def compare_upload():
         compare_df = cdf
         compare_meta = {'filename': file.filename, 'records': len(cdf)}
         
-        # Trigger evaluation for the comparison dataset
         _auto_train('compare')
         
-        return redirect(url_for('compare_results'))
+        return jsonify({'success': True})
     except Exception as e:
-        print(f"Compare upload error: {e}")
-        flash(f"Error processing comparison file: {e}", "danger")
-        return redirect(url_for('compare'))
+        return jsonify({'error': str(e)}), 500
 
-
-@app.route('/compare/results')
+@app.route('/api/compare/results', methods=['GET'])
 def compare_results():
     global data_df, compare_df, compare_meta
     if data_df is None or compare_df is None:
-        return redirect(url_for('compare'))
+        return jsonify({'error': 'Datasets not loaded'}), 400
 
     label_a = session.get('history', [{}])[0].get('filename', 'Dataset A') if session.get('history') else 'Dataset A'
     label_b = compare_meta.get('filename', 'Dataset B')
@@ -825,11 +747,9 @@ def compare_results():
     stats_b = _build_stats(compare_df.copy())
     _generate_compare_plots(stats_a, stats_b, label_a, label_b)
 
-    # Strip internal _df before sending to template
     def _strip(s):
         return {k: v for k, v in s.items() if k != '_df'}
 
-    # Compute deltas
     def _delta(a, b):
         if a is None or b is None:
             return None
@@ -844,30 +764,28 @@ def compare_results():
         'avg_sentiment':_delta(stats_a['avg_sentiment'],stats_b['avg_sentiment']),
     }
 
-    return render_template(
-        'compare.html',
-        active_page='compare',
-        primary_loaded=True,
-        compare_loaded=True,
-        compare_meta=compare_meta,
-        label_a=label_a,
-        label_b=label_b,
-        stats_a=_strip(stats_a),
-        stats_b=_strip(stats_b),
-        deltas=deltas,
-    )
+    return jsonify({
+        'label_a': label_a,
+        'label_b': label_b,
+        'stats_a': _strip(stats_a),
+        'stats_b': _strip(stats_b),
+        'deltas': deltas,
+        'plots': {
+            'cmp_burnout_hist': get_static_url('cmp_burnout_hist.png'),
+            'cmp_risk_bar': get_static_url('cmp_risk_bar.png'),
+            'cmp_features': get_static_url('cmp_features.png'),
+            'cmp_boxplot': get_static_url('cmp_boxplot.png'),
+            'cmp_sentiment': get_static_url('cmp_sentiment.png')
+        }
+    })
 
-
-@app.route('/compare/clear')
+@app.route('/api/compare/clear', methods=['POST'])
 def compare_clear():
     global compare_df, compare_meta, eval_metrics
     compare_df = None
     compare_meta = None
     eval_metrics['compare'] = None
-    return redirect(url_for('compare'))
-
+    return jsonify({'success': True})
 
 if __name__ == '__main__':
-    # app.run(debug=True)
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+    app.run(debug=True, port=5000)
