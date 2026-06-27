@@ -1,5 +1,5 @@
 sleep_hours,study_hours,stress_level,feedback,burnout_score,risk,sentiment_score
-7,5,9,"Too much pressure, can't sleep",64.28571428571429,Medium,-0.296
+9,5,9,"Too much pressure, can't sleep",50.0,Medium,-0.296
 7,2,5,Could use more sleep,14.285714285714285,Low,0.0
 8,4,7,A bit busy,35.0,Medium,0.0
 8,10,10,"Exhausted, high stress",100.0,High,-0.6486
